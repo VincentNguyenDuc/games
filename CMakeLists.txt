@@ -19,5 +19,5 @@ find_package(Catch2 3 CONFIG REQUIRED)
 
 enable_testing()
 
-add_subdirectory(game1)
 add_subdirectory(tictactoe)
+add_subdirectory(pathofgu)

@@ -1,23 +1,22 @@
-GAME         ?= game1
+TARGET         ?= template
 BUILD_PRESET ?= debug
 
-FMT_FILES := $(wildcard $(GAME)/src/*.c) $(wildcard $(GAME)/src/*.h) \
-             $(wildcard $(GAME)/src/*.cpp) $(wildcard $(GAME)/src/*.hpp) \
-             $(wildcard $(GAME)/include/*.hpp) $(wildcard $(GAME)/tests/*.cpp)
+FMT_FILES := $(shell find $(TARGET)/src $(TARGET)/include $(TARGET)/tests \
+             \( -name "*.c" -o -name "*.h" -o -name "*.cpp" -o -name "*.hpp" \) 2>/dev/null)
 
 .PHONY: help init clean install-hooks format build build-all run test
 
 help:
 	@echo "-----------------------------------------------------------------------"
-	@echo "Usage: make [target] [GAME=game1] [BUILD_PRESET=debug|release|profile]"
+	@echo "Usage: make [target] [TARGET=TARGET1] [BUILD_PRESET=debug|release|profile]"
 	@echo "Targets:"
 	@echo "  init            | Install git hooks"
-	@echo "  build           | Configure and build GAME"
-	@echo "  build-all       | Configure and build all games"
-	@echo "  run             | Build and run GAME"
-	@echo "  test            | Build and run tests for GAME"
+	@echo "  build           | Configure and build TARGET"
+	@echo "  build-all       | Configure and build all TARGETs"
+	@echo "  run             | Build and run TARGET"
+	@echo "  test            | Build and run tests for TARGET"
 	@echo "  clean           | Remove build artifacts"
-	@echo "  format          | Format C/C++ files for GAME"
+	@echo "  format          | Format C/C++ files for TARGET"
 	@echo "-----------------------------------------------------------------------"
 
 init:
@@ -29,17 +28,19 @@ install-hooks:
 
 build:
 	cmake --preset $(BUILD_PRESET)
-	cmake --build --preset $(BUILD_PRESET) --target $(GAME)
+	cmake --build --preset $(BUILD_PRESET) --target $(TARGET)
 
 build-all:
 	cmake --preset $(BUILD_PRESET)
 	cmake --build --preset $(BUILD_PRESET)
 
 run: build
-	./build/$(BUILD_PRESET)/$(GAME)
+	./build/$(BUILD_PRESET)/$(TARGET)
 
-test: build
-	ctest --test-dir build/$(BUILD_PRESET) -R "$(GAME)" --output-on-failure
+test:
+	cmake --preset $(BUILD_PRESET)
+	cmake --build --preset $(BUILD_PRESET) --target $(TARGET)-tests
+	./build/$(BUILD_PRESET)/$(TARGET)/tests/$(TARGET)-tests
 
 clean:
 	rm -rf build
