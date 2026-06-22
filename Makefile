@@ -1,21 +1,22 @@
-FMT_FILES := $(wildcard src/*.c) $(wildcard src/*.h) \
-             $(wildcard src/*.cpp) $(wildcard src/*.hpp) \
-             $(wildcard include/*.hpp) $(wildcard tests/*.cpp)
-
+GAME         ?= game1
 BUILD_PRESET ?= debug
 
-.PHONY: init clean install-hooks format build run test
+FMT_FILES := $(wildcard $(GAME)/src/*.c) $(wildcard $(GAME)/src/*.h) \
+             $(wildcard $(GAME)/src/*.cpp) $(wildcard $(GAME)/src/*.hpp) \
+             $(wildcard $(GAME)/include/*.hpp) $(wildcard $(GAME)/tests/*.cpp)
+
+.PHONY: help init clean install-hooks format build run test
 
 help:
 	@echo "-----------------------------------------------------------------------"
-	@echo "Usage: make [target] [BUILD_PRESET=debug|release|profile]"
+	@echo "Usage: make [target] [GAME=game1] [BUILD_PRESET=debug|release|profile]"
 	@echo "Targets:"
 	@echo "  init            | Install git hooks"
-	@echo "  build           | Configure and build the project"
-	@echo "  run             | Build and run the main executable"
-	@echo "  test            | Build and run tests"
+	@echo "  build           | Configure and build all games"
+	@echo "  run             | Build and run GAME"
+	@echo "  test            | Build and run tests for GAME"
 	@echo "  clean           | Remove build artifacts"
-	@echo "  format          | Format C/C++ files"
+	@echo "  format          | Format C/C++ files for GAME"
 	@echo "-----------------------------------------------------------------------"
 
 init:
@@ -30,10 +31,10 @@ build:
 	cmake --build --preset $(BUILD_PRESET)
 
 run: build
-	./build/$(BUILD_PRESET)/main
+	./build/$(BUILD_PRESET)/$(GAME)
 
 test: build
-	ctest --test-dir build/$(BUILD_PRESET) --output-on-failure
+	ctest --test-dir build/$(BUILD_PRESET) -R "$(GAME)" --output-on-failure
 
 clean:
 	rm -rf build
