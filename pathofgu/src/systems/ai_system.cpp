@@ -44,11 +44,11 @@ static AIDecision decide(Entity entity, BehaviorType type, int base_attack) {
 
 void ai_tick(EntityComponentRegistry& reg, World& world, Entity player) {
     auto* pos = reg.getComponent<Position>(player);
-    Room* room = world.get_room(pos->room_id);
+    Map* map = world.get_map(pos->map_id);
 
-    // Collect living enemies in the room
+    // Collect living enemies in the map
     std::vector<std::pair<Entity, int>> enemies; // entity + base_attack
-    for (Entity e : room->entities) {
+    for (Entity e : map->entities) {
         if (e == player)
             continue;
         auto* ai = reg.getComponent<AIBehavior>(e);

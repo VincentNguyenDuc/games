@@ -14,7 +14,7 @@ struct AttackCommand {
 }; // 0-indexed slot in the player's aperture
 struct PickupCommand {
     int drop_index;
-};                     // index into the room's dropped worms
+};                     // index into the map's dropped worms
 struct SkipCommand {}; // pass the turn
 struct QuitCommand {};
 

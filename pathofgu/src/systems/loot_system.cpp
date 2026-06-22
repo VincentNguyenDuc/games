@@ -19,12 +19,12 @@ void process_death(EntityComponentRegistry& reg, World& world, Entity entity) {
     if (!loot || !pos)
         return;
 
-    Room* room = world.get_room(pos->room_id);
+    Map* map = world.get_map(pos->map_id);
     std::uniform_real_distribution<float> dist(0.0f, 1.0f);
 
     for (const auto& drop : loot->drops) {
         if (dist(rng()) <= drop.chance) {
-            room->dropped_worms.push_back({drop.def});
+            map->dropped_worms.push_back({drop.def});
             fmt::print("  {} dropped!\n", drop.def->name);
         }
     }
@@ -33,9 +33,9 @@ void process_death(EntityComponentRegistry& reg, World& world, Entity entity) {
 bool pickup_worm(EntityComponentRegistry& reg, World& world, Entity player, int drop_index) {
     auto* pos = reg.getComponent<Position>(player);
     auto* aperture = reg.getComponent<Aperture>(player);
-    Room* room = world.get_room(pos->room_id);
+    Map* map = world.get_map(pos->map_id);
 
-    if (drop_index < 0 || drop_index >= (int)room->dropped_worms.size()) {
+    if (drop_index < 0 || drop_index >= (int)map->dropped_worms.size()) {
         fmt::print("No worm at that index.\n");
         return false;
     }
@@ -44,9 +44,9 @@ bool pickup_worm(EntityComponentRegistry& reg, World& world, Entity player, int 
         return false;
     }
 
-    GuWorm worm = room->dropped_worms[drop_index];
+    GuWorm worm = map->dropped_worms[drop_index];
     aperture->worms.push_back(worm);
-    room->dropped_worms.erase(room->dropped_worms.begin() + drop_index);
+    map->dropped_worms.erase(map->dropped_worms.begin() + drop_index);
     fmt::print("You refine {} into your aperture.\n", worm.def->name);
     return true;
 }

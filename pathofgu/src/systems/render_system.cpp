@@ -27,22 +27,22 @@ static const char* worm_type_label(GuWormType t) {
 
 void render(EntityComponentRegistry& reg, World& world, Entity player) {
     auto* pos = reg.getComponent<Position>(player);
-    Room* room = world.get_room(pos->room_id);
+    Map* map = world.get_map(pos->map_id);
 
     fmt::print("\n===========================================\n");
-    fmt::print("  {}\n", room->name);
+    fmt::print("  {}\n", map->name);
     fmt::print("===========================================\n");
-    fmt::print("{}\n\n", room->description);
+    fmt::print("{}\n\n", map->description);
 
     // Exits
     std::string exits_str;
-    for (const auto& [dir, _] : room->exits)
+    for (const auto& [dir, _] : map->exits)
         exits_str += dir + "  ";
     fmt::print("Exits: {}\n\n", exits_str.empty() ? "(none)" : exits_str);
 
-    // Enemies in room
+    // Enemies in map
     int enemy_idx = 1;
-    for (Entity e : room->entities) {
+    for (Entity e : map->entities) {
         if (e == player)
             continue;
         auto* hp = reg.getComponent<Health>(e);
@@ -55,11 +55,11 @@ void render(EntityComponentRegistry& reg, World& world, Entity player) {
 
     // Dropped worms
     fmt::print("\nDropped worms:\n");
-    if (room->dropped_worms.empty()) {
+    if (map->dropped_worms.empty()) {
         fmt::print("  (none)\n");
     } else {
-        for (int i = 0; i < (int)room->dropped_worms.size(); ++i) {
-            const auto& def = *room->dropped_worms[i].def;
+        for (int i = 0; i < (int)map->dropped_worms.size(); ++i) {
+            const auto& def = *map->dropped_worms[i].def;
             fmt::print(
                 "  [{}] {:25s}  Rank {}  {} +{}\n",
                 i + 1,

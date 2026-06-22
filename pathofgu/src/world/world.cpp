@@ -18,34 +18,34 @@
 //  [7] Guardian's Sanctum (boss / exit)
 
 World::World() {
-    auto entrance = make_room(
+    auto entrance = make_map(
         "Collapsed Archway",
         "You awaken amid shattered jade pillars. The air reeks of decayed Gu worms."
     );
-    auto passage = make_room(
+    auto passage = make_map(
         "Spirit Stone Passage",
         "Faintly glowing spirit stones line the walls. Several have already gone dark."
     );
-    auto hive = make_room(
+    auto hive = make_map(
         "Worm Hive Chamber", "The floor writhes. Dozens of rank-1 Gu worms nest in the cracks."
     );
-    auto hall = make_room(
+    auto hall = make_map(
         "Bloodstained Hall",
         "Dried blood traces old battles between Gu Masters who came before you."
     );
-    auto refinery = make_room(
+    auto refinery = make_map(
         "Ancient Refinement Chamber",
         "Rusted refinement cauldrons line the walls. Some worms still circle the vats."
     );
-    auto cache = make_room(
+    auto cache = make_map(
         "Forgotten Cache",
         "A cramped alcove sealed by a collapsed pillar. Worm casings litter the floor."
     );
-    auto sealed = make_room(
+    auto sealed = make_map(
         "Sealed Side Chamber",
         "A reinforced door left ajar. The previous occupant did not leave voluntarily."
     );
-    auto sanctum = make_room(
+    auto sanctum = make_map(
         "Guardian's Sanctum",
         "The Immortal's last construct stands here, waiting. The exit seal glows ahead.",
         true
@@ -60,43 +60,43 @@ World::World() {
     connect(refinery, "west", sealed);
 }
 
-RoomId World::make_room(std::string name, std::string description, bool is_exit) {
-    RoomId id = next_id_++;
-    auto room = std::make_unique<Room>();
-    room->id = id;
-    room->name = std::move(name);
-    room->description = std::move(description);
-    room->is_exit = is_exit;
-    rooms_[id] = std::move(room);
+MapId World::make_map(std::string name, std::string description, bool is_exit) {
+    MapId id = next_id_++;
+    auto map = std::make_unique<Map>();
+    map->id = id;
+    map->name = std::move(name);
+    map->description = std::move(description);
+    map->is_exit = is_exit;
+    maps_[id] = std::move(map);
     return id;
 }
 
-void World::connect(RoomId a, const std::string& dir, RoomId b) {
+void World::connect(MapId a, const std::string& dir, MapId b) {
     static const std::unordered_map<std::string, std::string> opposites = {
         {"north", "south"},
         {"south", "north"},
         {"east", "west"},
         {"west", "east"},
     };
-    rooms_.at(a)->exits[dir] = b;
-    rooms_.at(b)->exits[opposites.at(dir)] = a;
+    maps_.at(a)->exits[dir] = b;
+    maps_.at(b)->exits[opposites.at(dir)] = a;
 }
 
-Room* World::get_room(RoomId id) {
-    auto it = rooms_.find(id);
-    return it != rooms_.end() ? it->second.get() : nullptr;
+Map* World::get_map(MapId id) {
+    auto it = maps_.find(id);
+    return it != maps_.end() ? it->second.get() : nullptr;
 }
 
-void World::add_entity(RoomId room_id, Entity entity) {
-    rooms_.at(room_id)->entities.push_back(entity);
+void World::add_entity(MapId map_id, Entity entity) {
+    maps_.at(map_id)->entities.push_back(entity);
 }
 
-void World::remove_entity(RoomId room_id, Entity entity) {
-    auto& entities = rooms_.at(room_id)->entities;
+void World::remove_entity(MapId map_id, Entity entity) {
+    auto& entities = maps_.at(map_id)->entities;
     entities.erase(std::remove(entities.begin(), entities.end(), entity), entities.end());
 }
 
-void World::move_entity(Entity entity, RoomId from, RoomId to) {
+void World::move_entity(Entity entity, MapId from, MapId to) {
     remove_entity(from, entity);
     add_entity(to, entity);
 }

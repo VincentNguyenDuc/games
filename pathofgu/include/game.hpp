@@ -28,7 +28,7 @@ private:
     void spawn_player();
     void spawn_enemies();
     Entity make_enemy(
-        RoomId room,
+        MapId map,
         const std::string& name,
         int hp,
         int base_attack,

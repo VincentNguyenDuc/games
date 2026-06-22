@@ -60,7 +60,7 @@ void Game::spawn_player() {
 }
 
 Entity Game::make_enemy(
-    RoomId room,
+    MapId map,
     const std::string& name,
     int hp,
     int base_attack,
@@ -74,13 +74,13 @@ Entity Game::make_enemy(
     reg_->addComponent(e, Stats{base_attack, base_defense});
     reg_->addComponent(e, AIBehavior{behavior});
     reg_->addComponent(e, Loot{std::move(drops)});
-    reg_->addComponent(e, Position{room});
-    world_->add_entity(room, e);
+    reg_->addComponent(e, Position{map});
+    world_->add_entity(map, e);
     return e;
 }
 
 void Game::spawn_enemies() {
-    // Room IDs match World constructor order: 0=entrance, 1=passage, 2=hive,
+    // Map IDs match World constructor order: 0=entrance, 1=passage, 2=hive,
     // 3=hall, 4=refinery, 5=cache(loot only), 6=sealed, 7=sanctum(boss)
     auto strength_gu = db_->get("Strength Gu");
     auto iron_skin_gu = db_->get("Iron Skin Gu");
@@ -89,14 +89,14 @@ void Game::spawn_enemies() {
     auto vital_gu = db_->get("Vital Gu");
     auto thunder_gu = db_->get("Thunder Stomp Gu");
 
-    // Room 1 — Spirit Stone Passage
+    // Map 1 — Spirit Stone Passage
     make_enemy(1, "Wild Strength Gu", 18, 6, 0, BehaviorType::Wild, {{{strength_gu}, 0.80f}});
 
-    // Room 2 — Worm Hive Chamber
+    // Map 2 — Worm Hive Chamber
     make_enemy(2, "Wild Strength Gu", 18, 6, 0, BehaviorType::Wild, {{{strength_gu}, 0.60f}});
     make_enemy(2, "Wild Iron Skin Worm", 22, 4, 3, BehaviorType::Wild, {{{iron_skin_gu}, 0.60f}});
 
-    // Room 3 — Bloodstained Hall (first Schemer)
+    // Map 3 — Bloodstained Hall (first Schemer)
     make_enemy(
         3,
         "Demonic Gu Master - Wei",
@@ -107,7 +107,7 @@ void Game::spawn_enemies() {
         {{{lightning_gu}, 0.70f}, {{iron_skin_gu}, 0.50f}}
     );
 
-    // Room 4 — Ancient Refinement Chamber
+    // Map 4 — Ancient Refinement Chamber
     make_enemy(
         4,
         "Demonic Gu Master - Liu",
@@ -121,12 +121,12 @@ void Game::spawn_enemies() {
         4, "Corrupted Worm Construct", 28, 8, 2, BehaviorType::Wild, {{{strength_gu}, 0.50f}}
     );
 
-    // Room 5 — Forgotten Cache: pre-place loot, no enemies
-    Room* cache = world_->get_room(5);
+    // Map 5 — Forgotten Cache: pre-place loot, no enemies
+    Map* cache = world_->get_map(5);
     cache->dropped_worms.push_back({db_->get("Moonlight Gu")});
     cache->dropped_worms.push_back({db_->get("Steel Bones Gu")});
 
-    // Room 6 — Sealed Side Chamber (mini-boss construct)
+    // Map 6 — Sealed Side Chamber (mini-boss construct)
     make_enemy(
         6,
         "Iron Guardian Construct",
@@ -137,7 +137,7 @@ void Game::spawn_enemies() {
         {{{db_->get("Rock Skin Gu")}, 1.0f}, {{thunder_gu}, 0.50f}}
     );
 
-    // Room 7 — Guardian's Sanctum (final boss)
+    // Map 7 — Guardian's Sanctum (final boss)
     make_enemy(
         7,
         "Immortal's Guardian",
@@ -173,11 +173,11 @@ void Game::process_command(const PlayerCommand& cmd) {
 
         if constexpr (std::is_same_v<T, AttackCommand>) {
             auto* pos = reg_->getComponent<Position>(player_);
-            Room* room = world_->get_room(pos->room_id);
+            Map* map = world_->get_map(pos->map_id);
 
             // Collect living enemies
             std::vector<Entity> enemies;
-            for (Entity e : room->entities) {
+            for (Entity e : map->entities) {
                 if (e != player_ && reg_->getComponent<Health>(e))
                     enemies.push_back(e);
             }
@@ -264,12 +264,12 @@ void Game::check_deaths() {
 
 bool Game::check_win() {
     auto* pos = reg_->getComponent<Position>(player_);
-    Room* room = world_->get_room(pos->room_id);
-    if (!room->is_exit)
+    Map* map = world_->get_map(pos->map_id);
+    if (!map->is_exit)
         return false;
 
-    // Must clear the room first
-    for (Entity e : room->entities) {
+    // Must clear the map first
+    for (Entity e : map->entities) {
         if (e != player_ && reg_->getComponent<Health>(e))
             return false;
     }
@@ -286,8 +286,8 @@ bool Game::check_win() {
 
 bool Game::is_in_combat() const {
     auto* pos = reg_->getComponent<Position>(player_);
-    Room* room = world_->get_room(pos->room_id);
-    for (Entity e : room->entities) {
+    Map* map = world_->get_map(pos->map_id);
+    for (Entity e : map->entities) {
         if (e != player_ && reg_->getComponent<AIBehavior>(e) && reg_->getComponent<Health>(e))
             return true;
     }
@@ -297,7 +297,7 @@ bool Game::is_in_combat() const {
 void Game::destroy_entity(Entity e) {
     auto* pos = reg_->getComponent<Position>(e);
     if (pos)
-        world_->remove_entity(pos->room_id, e);
+        world_->remove_entity(pos->map_id, e);
 
     reg_->removeComponent<Health>(e);
     reg_->removeComponent<Stats>(e);

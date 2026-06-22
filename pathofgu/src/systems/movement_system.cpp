@@ -10,10 +10,10 @@ bool move_player(
     EntityComponentRegistry& reg, World& world, Entity player, const std::string& direction
 ) {
     auto* pos = reg.getComponent<Position>(player);
-    Room* room = world.get_room(pos->room_id);
+    Map* map = world.get_map(pos->map_id);
 
     // Block movement if living enemies remain
-    for (Entity e : room->entities) {
+    for (Entity e : map->entities) {
         if (e == player)
             continue;
         if (reg.getComponent<AIBehavior>(e) && reg.getComponent<Health>(e)) {
@@ -22,14 +22,14 @@ bool move_player(
         }
     }
 
-    auto it = room->exits.find(direction);
-    if (it == room->exits.end()) {
+    auto it = map->exits.find(direction);
+    if (it == map->exits.end()) {
         fmt::print("There is no exit to the {}.\n", direction);
         return false;
     }
 
-    RoomId dest = it->second;
-    world.move_entity(player, pos->room_id, dest);
-    pos->room_id = dest;
+    MapId dest = it->second;
+    world.move_entity(player, pos->map_id, dest);
+    pos->map_id = dest;
     return true;
 }

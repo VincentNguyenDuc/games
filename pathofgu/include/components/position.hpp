@@ -3,5 +3,5 @@
 #include <cstdint>
 
 struct Position {
-    std::uint32_t room_id;
+    std::uint32_t map_id;
 };
