@@ -54,7 +54,7 @@ void Game::spawn_player() {
     reg_->addComponent(player_, PrimevalEssence{60, 60, 0});
     reg_->addComponent(player_, CultivationRank{1, 0});
     reg_->addComponent(player_, Aperture{{{strength_gu}}, 3});
-    reg_->addComponent(player_, Position{world_->entrance_id()});
+    reg_->addComponent(player_, Position{world_->entrance_id(), 5, 5});
 
     world_->add_entity(world_->entrance_id(), player_);
 }
@@ -71,10 +71,14 @@ Entity Game::make_enemy(
     Entity e = entity_manager_.createEntity();
     reg_->addComponent(e, Name{name});
     reg_->addComponent(e, Health{hp, hp});
-    reg_->addComponent(e, Stats{base_attack, base_defense});
+    int range = (behavior == BehaviorType::Guardian)  ? 2
+                : (behavior == BehaviorType::Schemer) ? 3
+                                                      : 1;
+    reg_->addComponent(e, Stats{base_attack, base_defense, range});
     reg_->addComponent(e, AIBehavior{behavior});
     reg_->addComponent(e, Loot{std::move(drops)});
-    reg_->addComponent(e, Position{map});
+    auto [ex, ey] = world_->random_empty_cell(map);
+    reg_->addComponent(e, Position{map, ex, ey});
     world_->add_entity(map, e);
     return e;
 }
@@ -203,7 +207,11 @@ void Game::process_command(const PlayerCommand& cmd) {
         }
 
         if constexpr (std::is_same_v<T, PickupCommand>) {
-            pickup_worm(*reg_, *world_, player_, c.drop_index);
+            pickup_worm(*reg_, *world_, player_, c.pickup_index);
+        }
+
+        if constexpr (std::is_same_v<T, DropCommand>) {
+            drop_worm(*reg_, *world_, player_, c.pickup_index);
         }
 
         if constexpr (std::is_same_v<T, SkipCommand>) {

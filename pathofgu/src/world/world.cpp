@@ -1,21 +1,22 @@
 #include "world/world.hpp"
 
 #include <algorithm>
+#include <random>
 #include <stdexcept>
 
-// Dungeon layout:
+// Dungeon layout (map IDs match construction order):
 //
 //  [0] Collapsed Archway (entrance)
-//       | south
+//       | south (5,9)↔(5,0)
 //  [1] Spirit Stone Passage
-//       | south              | east
-//  [2] Worm Hive Chamber    [5] Forgotten Cache (dead end, loot)
-//       | south
+//       | south (5,9)↔(5,0)     east (9,5)↔(0,5)
+//  [2] Worm Hive Chamber         [5] Forgotten Cache
+//       | south (5,9)↔(5,0)
 //  [3] Bloodstained Hall
-//       | south              | west
-//  [4] Ancient Refinement   [6] Sealed Side Chamber (dead end, loot)
-//       | south
-//  [7] Guardian's Sanctum (boss / exit)
+//       | south (5,9)↔(5,0)
+//  [4] Ancient Refinement        west (0,5)↔(9,5)
+//       | south (5,9)↔(5,0)     [6] Sealed Side Chamber
+//  [7] Guardian's Sanctum (exit)
 
 World::World() {
     auto entrance = make_map(
@@ -51,13 +52,16 @@ World::World() {
         true
     );
 
-    connect(entrance, "south", passage);
-    connect(passage, "south", hive);
-    connect(hive, "south", hall);
-    connect(hive, "east", cache);
-    connect(hall, "south", refinery);
-    connect(refinery, "south", sanctum);
-    connect(refinery, "west", sealed);
+    // South/north connections: door at col 5, bottom row ↔ col 5, top row
+    connect(entrance, 5, 9, passage, 5, 0);
+    connect(passage, 5, 9, hive, 5, 0);
+    connect(hive, 5, 9, hall, 5, 0);
+    connect(hall, 5, 9, refinery, 5, 0);
+    connect(refinery, 5, 9, sanctum, 5, 0);
+
+    // East/west connections: door at right col, mid row ↔ left col, mid row
+    connect(hive, 9, 5, cache, 0, 5);
+    connect(refinery, 0, 5, sealed, 9, 5);
 }
 
 MapId World::make_map(std::string name, std::string description, bool is_exit) {
@@ -67,19 +71,25 @@ MapId World::make_map(std::string name, std::string description, bool is_exit) {
     map->name = std::move(name);
     map->description = std::move(description);
     map->is_exit = is_exit;
+
+    // Border = Wall, interior = Empty
+    for (int y = 0; y < 10; ++y)
+        for (int x = 0; x < 10; ++x)
+            map->grid[y][x] = (y == 0 || y == 9 || x == 0 || x == 9) ? Cell::Wall : Cell::Empty;
+
     maps_[id] = std::move(map);
     return id;
 }
 
-void World::connect(MapId a, const std::string& dir, MapId b) {
-    static const std::unordered_map<std::string, std::string> opposites = {
-        {"north", "south"},
-        {"south", "north"},
-        {"east", "west"},
-        {"west", "east"},
-    };
-    maps_.at(a)->exits[dir] = b;
-    maps_.at(b)->exits[opposites.at(dir)] = a;
+void World::connect(MapId a, int ax, int ay, MapId b, int bx, int by) {
+    auto& ma = *maps_.at(a);
+    auto& mb = *maps_.at(b);
+
+    ma.grid[ay][ax] = Cell::Door;
+    ma.doors[Map::cell_key(ax, ay)] = {b, bx, by};
+
+    mb.grid[by][bx] = Cell::Door;
+    mb.doors[Map::cell_key(bx, by)] = {a, ax, ay};
 }
 
 Map* World::get_map(MapId id) {
@@ -99,4 +109,18 @@ void World::remove_entity(MapId map_id, Entity entity) {
 void World::move_entity(Entity entity, MapId from, MapId to) {
     remove_entity(from, entity);
     add_entity(to, entity);
+}
+
+std::pair<int, int> World::random_empty_cell(MapId id) {
+    static std::mt19937 gen(std::random_device{}());
+    Map* map = maps_.at(id).get();
+
+    std::vector<std::pair<int, int>> candidates;
+    for (int y = 1; y <= 8; ++y)
+        for (int x = 1; x <= 8; ++x)
+            if (map->grid[y][x] == Cell::Empty)
+                candidates.emplace_back(x, y);
+
+    std::uniform_int_distribution<int> dist(0, static_cast<int>(candidates.size()) - 1);
+    return candidates[dist(gen)];
 }

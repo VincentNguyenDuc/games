@@ -22,14 +22,14 @@ std::optional<PlayerCommand> parse_command(const std::string& line) {
         return std::nullopt;
     }
 
-    // Directional shorthand: n/s/e/w
-    if (verb == "n")
+    // Directional shorthand: wasd
+    if (verb == "w")
         return MoveCommand{"north"};
     if (verb == "s")
         return MoveCommand{"south"};
-    if (verb == "e")
+    if (verb == "d")
         return MoveCommand{"east"};
-    if (verb == "w")
+    if (verb == "a")
         return MoveCommand{"west"};
 
     if (verb == "attack" || verb == "use") {
@@ -43,6 +43,13 @@ std::optional<PlayerCommand> parse_command(const std::string& line) {
         int idx = 0;
         if (ss >> idx)
             return PickupCommand{idx - 1};
+        return std::nullopt;
+    }
+
+    if (verb == "drop") {
+        int idx = 0;
+        if (ss >> idx)
+            return DropCommand{idx - 1};
         return std::nullopt;
     }
 

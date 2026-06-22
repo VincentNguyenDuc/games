@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <unordered_map>
+#include <utility>
 
 class World {
     std::unordered_map<MapId, std::unique_ptr<Map>> maps_;
@@ -19,7 +20,11 @@ public:
     void remove_entity(MapId map_id, Entity entity);
     void move_entity(Entity entity, MapId from, MapId to);
 
+    // Returns a random interior (non-wall, non-door) cell in the map.
+    std::pair<int, int> random_empty_cell(MapId id);
+
 private:
     MapId make_map(std::string name, std::string description, bool is_exit = false);
-    void connect(MapId a, const std::string& dir, MapId b); // connects both ways
+    // Place bidirectional Door cells: (ax,ay) on map a ↔ (bx,by) on map b.
+    void connect(MapId a, int ax, int ay, MapId b, int bx, int by);
 };

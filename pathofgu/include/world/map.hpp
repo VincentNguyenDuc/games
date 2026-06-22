@@ -10,14 +10,28 @@
 
 using MapId = std::uint32_t;
 
+namespace Cell {
+constexpr int Empty = 0;
+constexpr int Wall = 1;
+constexpr int Door = 2;
+} // namespace Cell
+
+struct Door {
+    MapId target_map;
+    int target_x, target_y; // landing position in the target map
+};
+
 class Map {
 public:
     MapId id;
     std::string name;
     std::string description;
-    std::unordered_map<std::string, MapId> exits; // "north" → connected MapId
+    bool is_exit = false;
+
+    std::array<std::array<int, 10>, 10> grid{};    // grid[y][x]; 0=Empty 1=Wall 2=Door
+    std::unordered_map<std::uint32_t, Door> doors; // cell_key(x,y) → Door
     std::vector<Entity> entities;
     std::vector<GuWorm> dropped_worms;
-    std::array<std::array<int, 10>, 10> grid;
-    bool is_exit = false; // reaching this map wins the game
+
+    static std::uint32_t cell_key(int x, int y) { return static_cast<std::uint32_t>(y * 10 + x); }
 };

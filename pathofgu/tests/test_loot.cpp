@@ -170,3 +170,66 @@ TEST_CASE("pickup_worm removes correct worm when multiple drops exist", "[loot]"
     REQUIRE(map->dropped_worms[0].def->name == "Gu A");
     REQUIRE(map->dropped_worms[1].def->name == "Gu C");
 }
+
+// ── drop_worm ─────────────────────────────────────────────────────────────────
+
+TEST_CASE("drop_worm moves worm from aperture to map", "[loot]") {
+    EntityComponentRegistry reg;
+    EntityManager em;
+    World world;
+
+    Entity player = em.createEntity();
+    reg.addComponent(player, Position{world.entrance_id()});
+    reg.addComponent(player, Aperture{{make_worm("Strength Gu"), make_worm("Iron Skin Gu")}, 9});
+
+    bool ok = drop_worm(reg, world, player, 0);
+    REQUIRE(ok);
+    REQUIRE(reg.getComponent<Aperture>(player)->worms.size() == 1);
+    REQUIRE(reg.getComponent<Aperture>(player)->worms[0].def->name == "Iron Skin Gu");
+    REQUIRE(world.get_map(world.entrance_id())->dropped_worms.size() == 1);
+    REQUIRE(world.get_map(world.entrance_id())->dropped_worms[0].def->name == "Strength Gu");
+}
+
+TEST_CASE("drop_worm fails on out-of-range slot", "[loot]") {
+    EntityComponentRegistry reg;
+    EntityManager em;
+    World world;
+
+    Entity player = em.createEntity();
+    reg.addComponent(player, Position{world.entrance_id()});
+    reg.addComponent(player, Aperture{{make_worm("Strength Gu")}, 9});
+
+    REQUIRE(!drop_worm(reg, world, player, 1)); // only slot 0 exists
+    REQUIRE(!drop_worm(reg, world, player, -1));
+    REQUIRE(reg.getComponent<Aperture>(player)->worms.size() == 1); // unchanged
+}
+
+TEST_CASE("drop_worm on empty aperture fails", "[loot]") {
+    EntityComponentRegistry reg;
+    EntityManager em;
+    World world;
+
+    Entity player = em.createEntity();
+    reg.addComponent(player, Position{world.entrance_id()});
+    reg.addComponent(player, Aperture{{}, 9});
+
+    REQUIRE(!drop_worm(reg, world, player, 0));
+    REQUIRE(world.get_map(world.entrance_id())->dropped_worms.empty());
+}
+
+TEST_CASE("dropped worm can be picked back up", "[loot]") {
+    EntityComponentRegistry reg;
+    EntityManager em;
+    World world;
+
+    Entity player = em.createEntity();
+    reg.addComponent(player, Position{world.entrance_id()});
+    reg.addComponent(player, Aperture{{make_worm("Strength Gu")}, 9});
+
+    REQUIRE(drop_worm(reg, world, player, 0));
+    REQUIRE(reg.getComponent<Aperture>(player)->worms.empty());
+
+    REQUIRE(pickup_worm(reg, world, player, 0));
+    REQUIRE(reg.getComponent<Aperture>(player)->worms.size() == 1);
+    REQUIRE(reg.getComponent<Aperture>(player)->worms[0].def->name == "Strength Gu");
+}

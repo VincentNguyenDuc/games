@@ -13,34 +13,34 @@ InMemoryGuWormDatabase::InMemoryGuWormDatabase() {
     spdlog::info("Initializing Gu Worm Database");
 
     // Rank 1
-    add({"Strength Gu", 1, GuWormType::Offensive, 5, 8});
-    add({"Iron Skin Gu", 1, GuWormType::Defensive, 5, 6});
-    add({"Liquor Worm", 1, GuWormType::Recovery, 4, 12});
-    add({"Light Gu", 1, GuWormType::Support, 3, 0});
-    add({"Stealth Gu", 1, GuWormType::Movement, 4, 0});
+    add({"Strength Gu", 1, GuWormType::Offensive, 5, 8, 1});  // melee
+    add({"Iron Skin Gu", 1, GuWormType::Defensive, 5, 6, 1}); // melee counter
+    add({"Liquor Worm", 1, GuWormType::Recovery, 4, 12, 0});  // self
+    add({"Light Gu", 1, GuWormType::Support, 3, 0, 0});       // self
+    add({"Stealth Gu", 1, GuWormType::Movement, 4, 0, 0});    // self
 
     // Rank 2
-    add({"Steel Bones Gu", 2, GuWormType::Defensive, 10, 14});
-    add({"Lightning Gu", 2, GuWormType::Offensive, 12, 20});
-    add({"Jade Skin Gu", 2, GuWormType::Defensive, 8, 10});
-    add({"Moonlight Gu", 2, GuWormType::Recovery, 10, 25});
-    add({"Wind Footwork Gu", 2, GuWormType::Movement, 8, 0});
+    add({"Steel Bones Gu", 2, GuWormType::Defensive, 10, 14, 1}); // melee counter
+    add({"Lightning Gu", 2, GuWormType::Offensive, 12, 20, 3});   // ranged
+    add({"Jade Skin Gu", 2, GuWormType::Defensive, 8, 10, 1});    // melee counter
+    add({"Moonlight Gu", 2, GuWormType::Recovery, 10, 25, 0});    // self
+    add({"Wind Footwork Gu", 2, GuWormType::Movement, 8, 0, 0});  // self
 
     // Rank 3
-    add({"Pulling Mountain Gu", 3, GuWormType::Offensive, 18, 38});
-    add({"Chainsaw Golden Centipede", 3, GuWormType::Offensive, 20, 45});
-    add({"Rock Skin Gu", 3, GuWormType::Defensive, 15, 22});
-    add({"Vital Gu", 3, GuWormType::Recovery, 16, 50});
+    add({"Pulling Mountain Gu", 3, GuWormType::Offensive, 18, 38, 2});       // short range
+    add({"Chainsaw Golden Centipede", 3, GuWormType::Offensive, 20, 45, 1}); // melee beast
+    add({"Rock Skin Gu", 3, GuWormType::Defensive, 15, 22, 1});              // melee counter
+    add({"Vital Gu", 3, GuWormType::Recovery, 16, 50, 0});                   // self
 
     // Rank 4
-    add({"Thunder Stomp Gu", 4, GuWormType::Offensive, 28, 70});
-    add({"Fixed Immortal Gu", 4, GuWormType::Support, 25, 0});
-    add({"Myriad Self Gu", 4, GuWormType::Defensive, 22, 40});
+    add({"Thunder Stomp Gu", 4, GuWormType::Offensive, 28, 70, 3}); // medium range
+    add({"Fixed Immortal Gu", 4, GuWormType::Support, 25, 0, 0});   // self
+    add({"Myriad Self Gu", 4, GuWormType::Defensive, 22, 40, 1});   // melee counter
 
     // Rank 5
-    add({"Spring Autumn Cicada", 5, GuWormType::Support, 40, 0});
-    add({"Sword Escape Gu", 5, GuWormType::Movement, 35, 0});
-    add({"Boiling Blood Gu", 5, GuWormType::Offensive, 38, 120});
+    add({"Spring Autumn Cicada", 5, GuWormType::Support, 40, 0, 0}); // self
+    add({"Sword Escape Gu", 5, GuWormType::Movement, 35, 0, 0});     // self
+    add({"Boiling Blood Gu", 5, GuWormType::Offensive, 38, 120, 5}); // long range
 }
 
 std::shared_ptr<GuWormDefinition> InMemoryGuWormDatabase::get(const std::string& name) const {

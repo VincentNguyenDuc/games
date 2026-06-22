@@ -11,6 +11,7 @@ struct GuWormDefinition {
     GuWormType type;
     int essence_cost; // primeval essence consumed per activation
     int effect_value; // damage / armor / heal / etc.
+    int range = 1;    // Chebyshev attack range; 0 = self/unlimited (Recovery, Support, Movement)
 };
 
 struct GuWorm {
