@@ -1,7 +1,7 @@
-#include <fmt/format.h>
-#include <iostream>
+#include "game.hpp"
 
 int main() {
-    fmt::print("Path of Gu\n\n");
+    Game game;
+    game.run();
     return 0;
 }

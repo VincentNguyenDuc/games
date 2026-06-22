@@ -1,7 +1,8 @@
 add_executable(pathofgu-tests 
     test_ecs.cpp
     test_items.cpp
-    ../src/ecs/entity.cpp 
+    test_event_queue.cpp
+    ../src/ecs/entity.cpp
     ../src/items/gu_worm_db.cpp
 )
 target_include_directories(pathofgu-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../include)
