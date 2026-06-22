@@ -43,7 +43,7 @@ PlayerRank: 1–5 (Rank 5 = game win)
 
 ## Architecture: ECS
 
-Entities are `uint32_t`. Components are plain data. Systems hold all logic.
+Entities are `uint16_t`. Components are plain data. Systems hold all logic.
 
 ```cpp
 // Core components
@@ -51,7 +51,7 @@ struct Health          { int hp, max_hp; };
 struct PrimevalEssence { int current, max; };
 struct Aperture        { std::vector<GuWorm> worms; int capacity; };
 struct CultivationRank { int rank; int refinement_points; };
-struct Position        { uint32_t room_id; };
+struct Position        { uint16_t room_id; };
 struct Name            { std::string value; };
 struct AIBehavior      { BehaviorType type; };   // Wild, Schemer, Guardian
 struct Loot            { std::vector<GuWormDrop> drops; };

@@ -1,4 +1,3 @@
-
 #include "ecs/entity.hpp"
 #include <spdlog/spdlog.h>
 
