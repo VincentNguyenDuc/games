@@ -4,9 +4,14 @@
 #include <fmt/format.h>
 
 static constexpr std::array<std::array<int, 3>, 8> WIN_LINES = {{
-    {0, 1, 2}, {3, 4, 5}, {6, 7, 8},
-    {0, 3, 6}, {1, 4, 7}, {2, 5, 8},
-    {0, 4, 8}, {2, 4, 6},
+    {0, 1, 2},
+    {3, 4, 5},
+    {6, 7, 8},
+    {0, 3, 6},
+    {1, 4, 7},
+    {2, 5, 8},
+    {0, 4, 8},
+    {2, 4, 6},
 }};
 
 GameState initial_state() {
@@ -36,13 +41,9 @@ bool is_draw(const Board& board) {
            std::none_of(board.begin(), board.end(), [](char c) { return c == ' '; });
 }
 
-bool is_game_over(const Board& board) {
-    return check_winner(board) != ' ' || is_draw(board);
-}
+bool is_game_over(const Board& board) { return check_winner(board) != ' ' || is_draw(board); }
 
-char next_player(char player) {
-    return player == 'X' ? 'O' : 'X';
-}
+char next_player(char player) { return player == 'X' ? 'O' : 'X'; }
 
 std::string render_board(const Board& board) {
     auto cell = [&](int i) -> std::string {
@@ -50,8 +51,14 @@ std::string render_board(const Board& board) {
     };
     return fmt::format(
         " {} | {} | {}\n---+---+---\n {} | {} | {}\n---+---+---\n {} | {} | {}\n",
-        cell(0), cell(1), cell(2),
-        cell(3), cell(4), cell(5),
-        cell(6), cell(7), cell(8)
+        cell(0),
+        cell(1),
+        cell(2),
+        cell(3),
+        cell(4),
+        cell(5),
+        cell(6),
+        cell(7),
+        cell(8)
     );
 }

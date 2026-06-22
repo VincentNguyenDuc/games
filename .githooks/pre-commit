@@ -4,7 +4,7 @@ set -e
 REPO_ROOT=$(git rev-parse --show-toplevel)
 
 # Format all source files
-make -C "$REPO_ROOT" format
+make -C "$REPO_ROOT" format-all
 
 # Re-stage any previously staged files that the formatter modified.
 # Only touches files already in the index to avoid promoting unstaged hunks.

@@ -4,7 +4,8 @@
 
 TEST_CASE("initial state has empty board and X starts") {
     auto state = initial_state();
-    for (char c : state.board) REQUIRE(c == ' ');
+    for (char c : state.board)
+        REQUIRE(c == ' ');
     REQUIRE(state.current_player == 'X');
 }
 

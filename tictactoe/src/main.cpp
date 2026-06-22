@@ -9,10 +9,13 @@ int main() {
     auto state = initial_state();
 
     while (!is_game_over(state.board)) {
-        fmt::print("{}\nPlayer {}, enter cell (1-9): ", render_board(state.board), state.current_player);
+        fmt::print(
+            "{}\nPlayer {}, enter cell (1-9): ", render_board(state.board), state.current_player
+        );
 
         int cell;
-        if (!(std::cin >> cell)) break;
+        if (!(std::cin >> cell))
+            break;
 
         auto next = make_move(state, cell - 1);
         if (!next) {
