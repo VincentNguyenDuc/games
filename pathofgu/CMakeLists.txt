@@ -8,6 +8,7 @@ add_executable(pathofgu
     src/world/world.cpp
     src/systems/render_system.cpp
     src/systems/combat_system.cpp
+    src/systems/effect_system.cpp
     src/systems/movement_system.cpp
     src/systems/loot_system.cpp
     src/systems/ai_system.cpp

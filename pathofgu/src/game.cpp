@@ -5,6 +5,7 @@
 #include "components/cultivation_rank.hpp"
 #include "components/health.hpp"
 #include "components/loot.hpp"
+#include "components/move_intent.hpp"
 #include "components/name.hpp"
 #include "components/position.hpp"
 #include "components/primeval_essence.hpp"
@@ -12,6 +13,7 @@
 #include "input/parser.hpp"
 #include "systems/ai_system.hpp"
 #include "systems/combat_system.hpp"
+#include "systems/effect_system.hpp"
 #include "systems/loot_system.hpp"
 #include "systems/movement_system.hpp"
 #include "systems/render_system.hpp"
@@ -35,7 +37,6 @@ void Game::run() {
     std::string input_text;
     auto input = Input(&input_text, "type command…");
 
-    // Renderer wraps the input so it's part of the component tree and receives focus.
     auto game_ui = Renderer(input, [&] {
         return vbox({
             render(*reg_, *world_, player_, status_msg_),
@@ -44,9 +45,7 @@ void Game::run() {
         });
     });
 
-    // CatchEvent intercepts keys before they reach the Input component.
     game_ui = CatchEvent(game_ui, [&](Event event) -> bool {
-        // Arrow keys: immediate movement, never conflict with text input.
         {
             std::optional<PlayerCommand> cmd;
             if (event == Event::ArrowUp)
@@ -66,7 +65,6 @@ void Game::run() {
             }
         }
 
-        // Enter submits a typed command
         if (event == Event::Return && !input_text.empty()) {
             if (auto cmd = parse_command(input_text))
                 process_command(*cmd);
@@ -116,7 +114,6 @@ Entity Game::make_enemy(
     reg_->addComponent(e, Stats{base_attack, base_defense, range});
     reg_->addComponent(e, AIBehavior{behavior});
 
-    // Enemies use their loot worms as their own aperture loadout
     std::vector<GuWorm> enemy_worms;
     for (const auto& d : drops)
         enemy_worms.push_back({d.def});
@@ -205,13 +202,35 @@ void Game::process_command(const PlayerCommand& cmd) {
         }
 
         if constexpr (std::is_same_v<T, MoveCommand>) {
-            bool moved = move_player(*reg_, *world_, player_, c.direction);
+            int dx = 0, dy = 0;
+            if (c.direction == "north")
+                dy = -1;
+            else if (c.direction == "south")
+                dy = 1;
+            else if (c.direction == "east")
+                dx = 1;
+            else if (c.direction == "west")
+                dx = -1;
+            else {
+                status_msg_ = "Unknown direction.";
+                return;
+            }
+
+            auto* pos_before = reg_->getComponent<Position>(player_);
+            int bx = pos_before->x, by = pos_before->y;
+            MapId bmap = pos_before->map_id;
+
+            reg_->addComponent(player_, MoveIntentComponent{dx, dy, /*allow_slide=*/false});
+            std::string move_msg = resolve_moves(*reg_, *world_);
+
+            auto* pos_after = reg_->getComponent<Position>(player_);
+            bool moved = (pos_after->x != bx || pos_after->y != by || pos_after->map_id != bmap);
             if (moved) {
                 auto* essence = reg_->getComponent<PrimevalEssence>(player_);
                 int regen = std::max(1, essence->max / 5);
                 essence->current = std::min(essence->max, essence->current + regen);
                 essence->depleted_turns = 0;
-                status_msg_.clear();
+                status_msg_ = move_msg;
             }
         }
 
@@ -230,20 +249,15 @@ void Game::process_command(const PlayerCommand& cmd) {
             }
 
             Entity target = enemies[0];
-            auto result = player_attack(*reg_, player_, target, c.worm_slot);
+            auto result = activate_worm(*reg_, player_, target, c.worm_slot);
             status_msg_ = result.message;
-
-            if (result.success) {
-                if (result.target_died) {
-                    process_death(*reg_, *world_, target);
-                    destroy_entity(target);
-                }
+            if (result.success)
                 post_action_tick();
-            }
         }
 
         if constexpr (std::is_same_v<T, HealCommand>) {
-            auto result = player_use(*reg_, player_, c.worm_slot);
+            // Self-targeting: pass player as both source and target
+            auto result = activate_worm(*reg_, player_, player_, c.worm_slot);
             status_msg_ = result.message;
             if (result.success)
                 post_action_tick();
@@ -275,14 +289,23 @@ void Game::process_command(const PlayerCommand& cmd) {
 }
 
 void Game::post_action_tick() {
-    auto* essence = reg_->getComponent<PrimevalEssence>(player_);
-
     if (is_in_combat()) {
-        std::string ai_msgs = ai_tick(*reg_, *world_, player_);
-        if (!ai_msgs.empty())
-            status_msg_ += (status_msg_.empty() ? "" : "\n") + ai_msgs;
-        check_deaths();
+        // 1. AI decides: out-of-range enemies stamp MoveIntentComponent, others stamp effect
+        // components
+        std::string msgs = ai_tick(*reg_, *world_, player_);
 
+        // 2. Resolve movement and combat effects in deterministic phases
+        msgs += resolve_moves(*reg_, *world_);
+        msgs += resolve_self_effects(*reg_);
+        msgs += resolve_attack_effects(*reg_);
+
+        if (!msgs.empty())
+            status_msg_ += (status_msg_.empty() ? "" : "\n") + msgs;
+
+        // 3. Clean up dead entities, check game-over conditions
+        cleanup_dead();
+
+        auto* essence = reg_->getComponent<PrimevalEssence>(player_);
         if (essence->current == 0) {
             essence->depleted_turns++;
             if (essence->depleted_turns >= 3) {
@@ -298,11 +321,25 @@ void Game::post_action_tick() {
     }
 }
 
-void Game::check_deaths() {
+void Game::cleanup_dead() {
     auto* player_hp = reg_->getComponent<Health>(player_);
     if (player_hp->hp <= 0) {
         status_msg_ = "You have fallen. Your Gu worms scatter into the void. DEFEAT.";
         screen_.Exit();
+        return;
+    }
+
+    // Collect dead enemies (copy — can't remove while iterating map->entities)
+    auto* pos = reg_->getComponent<Position>(player_);
+    Map* map = world_->get_map(pos->map_id);
+    std::vector<Entity> dead;
+    for (Entity e : map->entities)
+        if (e != player_ && reg_->getComponent<Health>(e) && reg_->getComponent<Health>(e)->hp <= 0)
+            dead.push_back(e);
+
+    for (Entity e : dead) {
+        process_death(*reg_, *world_, e);
+        destroy_entity(e);
     }
 }
 

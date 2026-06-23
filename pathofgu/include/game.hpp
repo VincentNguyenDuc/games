@@ -39,7 +39,7 @@ private:
 
     void process_command(const PlayerCommand& cmd);
     void post_action_tick();
-    void check_deaths();
+    void cleanup_dead();
     void destroy_entity(Entity e);
     bool is_in_combat() const;
     bool check_win();

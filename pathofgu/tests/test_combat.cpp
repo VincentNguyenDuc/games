@@ -10,12 +10,12 @@
 #include "ecs/registry.hpp"
 #include "items/gu_worm.hpp"
 #include "systems/combat_system.hpp"
+#include "systems/effect_system.hpp"
 
 #include <memory>
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-// range=1 by default (melee); pass explicit range to test ranged worms
 static GuWorm make_worm(
     const std::string& name,
     GuWormType type,
@@ -29,7 +29,7 @@ static GuWorm make_worm(
     return GuWorm{def};
 }
 
-// Player placed at (5,5) by default
+// Player at (5,5)
 static Entity make_player(
     EntityComponentRegistry& reg,
     EntityManager& em,
@@ -47,7 +47,7 @@ static Entity make_player(
     return p;
 }
 
-// Enemy placed at (5,6) by default — Chebyshev distance 1 from player (5,5)
+// Enemy at (5,6) — Chebyshev distance 1 from player (5,5)
 static Entity make_enemy(
     EntityComponentRegistry& reg,
     EntityManager& em,
@@ -77,10 +77,11 @@ TEST_CASE("offensive worm deals damage and costs essence", "[combat]") {
         make_worm("Strength Gu", GuWormType::Offensive, 10, 20)
     );
 
-    auto result = player_attack(reg, player, enemy, 0);
+    auto result = activate_worm(reg, player, enemy, 0);
     REQUIRE(result.success);
+    REQUIRE(reg.getComponent<PrimevalEssence>(player)->current == 40); // essence spent immediately
+    resolve_attack_effects(reg);
     REQUIRE(reg.getComponent<Health>(enemy)->hp < 30);
-    REQUIRE(reg.getComponent<PrimevalEssence>(player)->current == 40);
 }
 
 TEST_CASE("offensive worm respects enemy defense", "[combat]") {
@@ -93,8 +94,8 @@ TEST_CASE("offensive worm respects enemy defense", "[combat]") {
         make_worm("Strength Gu", GuWormType::Offensive, 5, 20)
     );
 
-    auto result = player_attack(reg, player, enemy, 0);
-    REQUIRE(result.success);
+    activate_worm(reg, player, enemy, 0);
+    resolve_attack_effects(reg);
     // damage = max(1, 20 - 15) = 5
     REQUIRE(reg.getComponent<Health>(enemy)->hp == 25);
 }
@@ -109,8 +110,8 @@ TEST_CASE("high defense still lets minimum 1 damage through", "[combat]") {
         make_worm("Weak Gu", GuWormType::Offensive, 2, 5)
     );
 
-    auto result = player_attack(reg, player, enemy, 0);
-    REQUIRE(result.success);
+    activate_worm(reg, player, enemy, 0);
+    resolve_attack_effects(reg);
     REQUIRE(reg.getComponent<Health>(enemy)->hp == 29); // 1 damage minimum
 }
 
@@ -126,8 +127,9 @@ TEST_CASE("attack fails when essence is insufficient", "[combat]") {
         make_worm("Expensive Gu", GuWormType::Offensive, 10, 20) // costs 10
     );
 
-    auto result = player_attack(reg, player, enemy, 0);
+    auto result = activate_worm(reg, player, enemy, 0);
     REQUIRE(!result.success);
+    resolve_attack_effects(reg);
     REQUIRE(reg.getComponent<Health>(enemy)->hp == 30);               // no damage
     REQUIRE(reg.getComponent<PrimevalEssence>(player)->current == 5); // no spend
 }
@@ -140,7 +142,7 @@ TEST_CASE("attack fails on invalid worm slot", "[combat]") {
     Entity player = make_player(reg, em);
     Entity enemy = make_enemy(reg, em);
 
-    auto result = player_attack(reg, player, enemy, 0);
+    auto result = activate_worm(reg, player, enemy, 0);
     REQUIRE(!result.success);
 }
 
@@ -153,25 +155,25 @@ TEST_CASE("attack fails on negative worm slot", "[combat]") {
     reg.getComponent<Aperture>(player)->worms.push_back(make_worm("Gu", GuWormType::Offensive, 2, 5)
     );
 
-    auto result = player_attack(reg, player, enemy, -1);
+    auto result = activate_worm(reg, player, enemy, -1);
     REQUIRE(!result.success);
 }
 
 // ── recovery worm ─────────────────────────────────────────────────────────────
 
-TEST_CASE("recovery worm heals the player", "[combat]") {
+TEST_CASE("recovery worm heals the user", "[combat]") {
     EntityComponentRegistry reg;
     EntityManager em;
     Entity player = make_player(reg, em, 100, 50);
-    Entity enemy = make_enemy(reg, em, 30);
 
-    reg.getComponent<Health>(player)->hp = 60; // player took 40 damage
+    reg.getComponent<Health>(player)->hp = 60; // took 40 damage
     reg.getComponent<Aperture>(player)->worms.push_back(
-        make_worm("Healing Gu", GuWormType::Recovery, 5, 30)
+        make_worm("Healing Gu", GuWormType::Recovery, 5, 30, 1, /*range=*/0)
     );
 
-    auto result = player_attack(reg, player, enemy, 0);
+    auto result = activate_worm(reg, player, player, 0); // self-target
     REQUIRE(result.success);
+    resolve_self_effects(reg);
     REQUIRE(reg.getComponent<Health>(player)->hp == 90); // healed 30
 }
 
@@ -179,21 +181,20 @@ TEST_CASE("recovery worm does not exceed max HP", "[combat]") {
     EntityComponentRegistry reg;
     EntityManager em;
     Entity player = make_player(reg, em, 100, 50);
-    Entity enemy = make_enemy(reg, em, 30);
 
     reg.getComponent<Health>(player)->hp = 95;
     reg.getComponent<Aperture>(player)->worms.push_back(
-        make_worm("Healing Gu", GuWormType::Recovery, 5, 30)
+        make_worm("Healing Gu", GuWormType::Recovery, 5, 30, 1, /*range=*/0)
     );
 
-    auto result = player_attack(reg, player, enemy, 0);
-    REQUIRE(result.success);
+    activate_worm(reg, player, player, 0);
+    resolve_self_effects(reg);
     REQUIRE(reg.getComponent<Health>(player)->hp == 100); // capped at max
 }
 
 // ── death detection ───────────────────────────────────────────────────────────
 
-TEST_CASE("target_died is set when enemy HP drops to zero", "[combat]") {
+TEST_CASE("enemy HP drops to zero after lethal attack", "[combat]") {
     EntityComponentRegistry reg;
     EntityManager em;
     Entity player = make_player(reg, em, 100, 50);
@@ -203,12 +204,12 @@ TEST_CASE("target_died is set when enemy HP drops to zero", "[combat]") {
         make_worm("Kill Shot Gu", GuWormType::Offensive, 5, 100)
     );
 
-    auto result = player_attack(reg, player, enemy, 0);
-    REQUIRE(result.success);
-    REQUIRE(result.target_died);
+    activate_worm(reg, player, enemy, 0);
+    resolve_attack_effects(reg);
+    REQUIRE(reg.getComponent<Health>(enemy)->hp <= 0);
 }
 
-TEST_CASE("target_died is false when enemy survives", "[combat]") {
+TEST_CASE("enemy survives a weak attack", "[combat]") {
     EntityComponentRegistry reg;
     EntityManager em;
     Entity player = make_player(reg, em, 100, 50);
@@ -218,9 +219,27 @@ TEST_CASE("target_died is false when enemy survives", "[combat]") {
         make_worm("Weak Gu", GuWormType::Offensive, 5, 10)
     );
 
-    auto result = player_attack(reg, player, enemy, 0);
+    activate_worm(reg, player, enemy, 0);
+    resolve_attack_effects(reg);
+    REQUIRE(reg.getComponent<Health>(enemy)->hp > 0);
+}
+
+// ── symmetry: enemy attacks player ───────────────────────────────────────────
+
+TEST_CASE("enemy can activate worm against player symmetrically", "[combat]") {
+    EntityComponentRegistry reg;
+    EntityManager em;
+    Entity player = make_player(reg, em, 100, 50);
+    Entity enemy = make_enemy(reg, em, 30);
+
+    // Give the enemy an aperture and essence
+    reg.addComponent(enemy, PrimevalEssence{30, 30, 0});
+    reg.addComponent(enemy, Aperture{{make_worm("Strength Gu", GuWormType::Offensive, 5, 15)}, 1});
+
+    auto result = activate_worm(reg, enemy, player, 0);
     REQUIRE(result.success);
-    REQUIRE(!result.target_died);
+    resolve_attack_effects(reg);
+    REQUIRE(reg.getComponent<Health>(player)->hp < 100); // player took damage
 }
 
 // ── range checks ──────────────────────────────────────────────────────────────
@@ -228,7 +247,6 @@ TEST_CASE("target_died is false when enemy survives", "[combat]") {
 TEST_CASE("melee worm hits adjacent enemy (distance 1)", "[combat]") {
     EntityComponentRegistry reg;
     EntityManager em;
-    // player (5,5), enemy (5,6) → Chebyshev distance 1
     Entity player = make_player(reg, em, 100, 50, 5, 5);
     Entity enemy = make_enemy(reg, em, 30, 0, 5, 6);
 
@@ -236,15 +254,15 @@ TEST_CASE("melee worm hits adjacent enemy (distance 1)", "[combat]") {
         make_worm("Strength Gu", GuWormType::Offensive, 5, 10, 1, /*range=*/1)
     );
 
-    auto result = player_attack(reg, player, enemy, 0);
+    auto result = activate_worm(reg, player, enemy, 0);
     REQUIRE(result.success);
+    resolve_attack_effects(reg);
     REQUIRE(reg.getComponent<Health>(enemy)->hp < 30);
 }
 
 TEST_CASE("melee worm fails when enemy is out of range", "[combat]") {
     EntityComponentRegistry reg;
     EntityManager em;
-    // player (1,1), enemy (7,7) → Chebyshev distance 6
     Entity player = make_player(reg, em, 100, 50, 1, 1);
     Entity enemy = make_enemy(reg, em, 30, 0, 7, 7);
 
@@ -252,7 +270,7 @@ TEST_CASE("melee worm fails when enemy is out of range", "[combat]") {
         make_worm("Strength Gu", GuWormType::Offensive, 5, 10, 1, /*range=*/1)
     );
 
-    auto result = player_attack(reg, player, enemy, 0);
+    auto result = activate_worm(reg, player, enemy, 0);
     REQUIRE(!result.success);
     REQUIRE(reg.getComponent<Health>(enemy)->hp == 30);                // no damage
     REQUIRE(reg.getComponent<PrimevalEssence>(player)->current == 50); // no spend
@@ -261,7 +279,6 @@ TEST_CASE("melee worm fails when enemy is out of range", "[combat]") {
 TEST_CASE("ranged worm hits enemy at distance within its range", "[combat]") {
     EntityComponentRegistry reg;
     EntityManager em;
-    // player (5,5), enemy (5,8) → Chebyshev distance 3
     Entity player = make_player(reg, em, 100, 50, 5, 5);
     Entity enemy = make_enemy(reg, em, 30, 0, 5, 8);
 
@@ -269,15 +286,15 @@ TEST_CASE("ranged worm hits enemy at distance within its range", "[combat]") {
         make_worm("Lightning Gu", GuWormType::Offensive, 12, 20, 2, /*range=*/3)
     );
 
-    auto result = player_attack(reg, player, enemy, 0);
+    auto result = activate_worm(reg, player, enemy, 0);
     REQUIRE(result.success);
+    resolve_attack_effects(reg);
     REQUIRE(reg.getComponent<Health>(enemy)->hp < 30);
 }
 
-TEST_CASE("ranged worm also fails beyond its own range", "[combat]") {
+TEST_CASE("ranged worm fails beyond its own range", "[combat]") {
     EntityComponentRegistry reg;
     EntityManager em;
-    // player (1,1), enemy (8,8) → Chebyshev distance 7 > range 3
     Entity player = make_player(reg, em, 100, 50, 1, 1);
     Entity enemy = make_enemy(reg, em, 30, 0, 8, 8);
 
@@ -285,23 +302,22 @@ TEST_CASE("ranged worm also fails beyond its own range", "[combat]") {
         make_worm("Lightning Gu", GuWormType::Offensive, 12, 20, 2, /*range=*/3)
     );
 
-    auto result = player_attack(reg, player, enemy, 0);
+    auto result = activate_worm(reg, player, enemy, 0);
     REQUIRE(!result.success);
 }
 
-TEST_CASE("recovery worm ignores distance (range 0 = unlimited)", "[combat]") {
+TEST_CASE("recovery worm ignores distance (range 0 = self only)", "[combat]") {
     EntityComponentRegistry reg;
     EntityManager em;
-    // enemy far away — doesn't matter for a self-targeting worm
     Entity player = make_player(reg, em, 100, 50, 1, 1);
-    Entity enemy = make_enemy(reg, em, 30, 0, 8, 8);
 
     reg.getComponent<Health>(player)->hp = 60;
     reg.getComponent<Aperture>(player)->worms.push_back(
         make_worm("Liquor Worm", GuWormType::Recovery, 4, 20, 1, /*range=*/0)
     );
 
-    auto result = player_attack(reg, player, enemy, 0);
+    auto result = activate_worm(reg, player, player, 0);
     REQUIRE(result.success);
+    resolve_self_effects(reg);
     REQUIRE(reg.getComponent<Health>(player)->hp == 80); // healed 20
 }

@@ -1,11 +1,11 @@
 #pragma once
 
-#include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
 #include "world/world.hpp"
 
 #include <string>
 
-bool move_player(
-    EntityComponentRegistry& reg, World& world, Entity player, const std::string& direction
-);
+// Resolves all pending MoveIntentComponents: applies movement, handles door
+// transitions, enforces wall and entity collision. Works the same for any entity.
+// Returns messages (door transitions, etc.).
+std::string resolve_moves(EntityComponentRegistry& reg, World& world);

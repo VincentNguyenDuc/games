@@ -7,6 +7,7 @@ add_executable(pathofgu-tests
     ../src/ecs/entity.cpp
     ../src/items/gu_worm_db.cpp
     ../src/systems/combat_system.cpp
+    ../src/systems/effect_system.cpp
     ../src/systems/loot_system.cpp
     ../src/world/world.cpp
 )

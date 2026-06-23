@@ -5,16 +5,14 @@
 
 #include <string>
 
-struct CombatResult {
+struct ActivationResult {
     bool success;
-    std::string message;
-    bool target_died = false;
-    int damage_dealt = 0; // set for Offensive/Defensive worms; 0 otherwise
+    std::string message; // empty on success; error description on failure
 };
 
-CombatResult player_attack(
-    EntityComponentRegistry& reg, Entity player, Entity target, int worm_slot
+// Validates the worm activation (essence, range, slot), deducts essence, and stamps
+// either a SelfEffectComponent (range == 0) or AttackEffectComponent (range > 0) on
+// the source entity. Applies equally to player and enemy — no special-casing.
+ActivationResult activate_worm(
+    EntityComponentRegistry& reg, Entity source, Entity target, int worm_slot
 );
-
-// Activates a self-targeting worm (Recovery/Support/Movement) without a target.
-CombatResult player_use(EntityComponentRegistry& reg, Entity player, int worm_slot);
