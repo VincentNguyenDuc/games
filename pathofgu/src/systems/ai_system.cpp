@@ -9,15 +9,12 @@
 #include "components/primeval_essence.hpp"
 #include "components/stats.hpp"
 #include "items/gu_worm.hpp"
+#include "utility.hpp"
 
 #include <fmt/format.h>
 #include <future>
 #include <random>
 #include <vector>
-
-static int chebyshev(const Position& a, const Position& b) {
-    return std::max(std::abs(a.x - b.x), std::abs(a.y - b.y));
-}
 
 static void step_toward(
     EntityComponentRegistry& reg, World& world, Entity enemy, const Position& target
@@ -42,12 +39,6 @@ static void step_toward(
     } else if (dy && passable(pos->x, pos->y + dy)) {
         pos->y += dy;
     }
-}
-
-static int random_variance(int base) {
-    static std::mt19937 gen(std::random_device{}());
-    std::uniform_int_distribution<int> dist(-base / 4, base / 4);
-    return base + dist(gen);
 }
 
 // Immutable snapshot of an enemy, safe to capture by value for async use.

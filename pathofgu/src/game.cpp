@@ -9,7 +9,7 @@
 #include "components/position.hpp"
 #include "components/primeval_essence.hpp"
 #include "components/stats.hpp"
-#include "input/input_thread.hpp"
+#include "input/parser.hpp"
 #include "systems/ai_system.hpp"
 #include "systems/combat_system.hpp"
 #include "systems/loot_system.hpp"

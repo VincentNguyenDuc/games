@@ -5,12 +5,9 @@
 #include "components/position.hpp"
 #include "components/primeval_essence.hpp"
 #include "components/stats.hpp"
+#include "utility.hpp"
 
 #include <fmt/format.h>
-
-static int chebyshev(const Position& a, const Position& b) {
-    return std::max(std::abs(a.x - b.x), std::abs(a.y - b.y));
-}
 
 CombatResult player_attack(
     EntityComponentRegistry& reg, Entity player, Entity target, int worm_slot

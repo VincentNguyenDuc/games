@@ -4,7 +4,7 @@ add_executable(pathofgu
     src/main.cpp
     src/ecs/entity.cpp
     src/items/gu_worm_db.cpp
-    src/input/input_thread.cpp
+    src/input/parser.cpp
     src/world/world.cpp
     src/systems/render_system.cpp
     src/systems/combat_system.cpp

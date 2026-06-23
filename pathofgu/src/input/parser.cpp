@@ -1,4 +1,4 @@
-#include "input/input_thread.hpp"
+#include "input/parser.hpp"
 
 #include <algorithm>
 #include <sstream>
