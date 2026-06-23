@@ -7,6 +7,7 @@
     "dependencies": [
         "fmt",
         "spdlog",
-        "catch2"
+        "catch2",
+        "ftxui"
     ]
 }

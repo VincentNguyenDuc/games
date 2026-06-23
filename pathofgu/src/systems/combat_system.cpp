@@ -71,6 +71,7 @@ CombatResult player_attack(
         effect_msg = fmt::format("deflects and strikes for {} damage", damage);
         break;
     }
+
     case GuWormType::Recovery: {
         auto* player_hp = reg.getComponent<Health>(player);
         int healed = std::min(def.effect_value, player_hp->max_hp - player_hp->hp);
@@ -94,5 +95,52 @@ CombatResult player_attack(
     if (died)
         msg += fmt::format("\n{} has been defeated!", def_name ? def_name->value : "Enemy");
 
-    return {true, msg, died};
+    return {true, msg, died, damage};
+}
+
+CombatResult player_use(EntityComponentRegistry& reg, Entity player, int worm_slot) {
+    auto* aperture = reg.getComponent<Aperture>(player);
+    auto* essence = reg.getComponent<PrimevalEssence>(player);
+    auto* hp = reg.getComponent<Health>(player);
+
+    if (!aperture || !essence || !hp)
+        return {false, "Invalid state."};
+    if (worm_slot < 0 || worm_slot >= (int)aperture->worms.size())
+        return {false, "No worm in that slot."};
+
+    const auto& worm = aperture->worms[worm_slot];
+    const auto& def = *worm.def;
+
+    if (def.range > 0)
+        return {
+            false,
+            fmt::format(
+                "{} is an offensive worm — use 'attack {}' to target an enemy.",
+                def.name,
+                worm_slot + 1
+            )};
+
+    if (essence->current < def.essence_cost)
+        return {false, "Not enough primeval essence to activate " + def.name + "."};
+
+    essence->current -= def.essence_cost;
+
+    std::string effect_msg;
+    switch (def.type) {
+    case GuWormType::Recovery: {
+        int healed = std::min(def.effect_value, hp->max_hp - hp->hp);
+        hp->hp += healed;
+        effect_msg = fmt::format("restores {} HP (now {}/{})", healed, hp->hp, hp->max_hp);
+        break;
+    }
+    case GuWormType::Support:
+    case GuWormType::Movement:
+        effect_msg = "pulses with energy (no immediate effect)";
+        break;
+    default:
+        effect_msg = "activates";
+        break;
+    }
+
+    return {true, fmt::format("You activate {}! It {}.", def.name, effect_msg)};
 }

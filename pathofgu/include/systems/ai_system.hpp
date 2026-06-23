@@ -8,8 +8,10 @@
 
 struct AIDecision {
     Entity entity;
-    int hp_damage;
-    int essence_damage;
+    int hp_damage = 0;
+    int essence_damage = 0;
+    int worm_slot = -1;     // -1 = raw stat attack; >= 0 = use aperture slot
+    bool heal_self = false; // worm targets the enemy itself (Recovery)
 };
 
-void ai_tick(EntityComponentRegistry& reg, World& world, Entity player);
+std::string ai_tick(EntityComponentRegistry& reg, World& world, Entity player);

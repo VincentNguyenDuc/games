@@ -1,3 +1,5 @@
+find_package(ftxui CONFIG REQUIRED)
+
 add_executable(pathofgu
     src/main.cpp
     src/ecs/entity.cpp
@@ -12,6 +14,12 @@ add_executable(pathofgu
     src/game.cpp
 )
 target_include_directories(pathofgu PRIVATE include)
-target_link_libraries(pathofgu PRIVATE fmt::fmt spdlog::spdlog)
+target_link_libraries(pathofgu PRIVATE
+    fmt::fmt
+    spdlog::spdlog
+    ftxui::screen
+    ftxui::dom
+    ftxui::component
+)
 
 add_subdirectory(tests)

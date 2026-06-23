@@ -12,6 +12,9 @@ struct MoveCommand {
 struct AttackCommand {
     int worm_slot;
 }; // 0-indexed slot in the player's aperture
+struct HealCommand {
+    int worm_slot;
+};
 struct PickupCommand {
     int pickup_index;
 }; // index into the map's dropped worms
@@ -21,5 +24,11 @@ struct DropCommand {
 struct SkipCommand {}; // pass the turn
 struct QuitCommand {};
 
-using PlayerCommand =
-    std::variant<MoveCommand, AttackCommand, PickupCommand, DropCommand, SkipCommand, QuitCommand>;
+using PlayerCommand = std::variant<
+    MoveCommand,
+    AttackCommand,
+    HealCommand,
+    PickupCommand,
+    DropCommand,
+    SkipCommand,
+    QuitCommand>;

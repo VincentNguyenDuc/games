@@ -1,7 +1,6 @@
 #include "input/input_thread.hpp"
 
 #include <algorithm>
-#include <iostream>
 #include <sstream>
 
 std::optional<PlayerCommand> parse_command(const std::string& line) {
@@ -12,7 +11,6 @@ std::optional<PlayerCommand> parse_command(const std::string& line) {
     std::string verb;
     ss >> verb;
 
-    // Normalise to lowercase
     std::transform(verb.begin(), verb.end(), verb.begin(), ::tolower);
 
     if (verb == "move" || verb == "go") {
@@ -22,7 +20,7 @@ std::optional<PlayerCommand> parse_command(const std::string& line) {
         return std::nullopt;
     }
 
-    // Directional shorthand: wasd
+    // wasd shorthands
     if (verb == "w")
         return MoveCommand{"north"};
     if (verb == "s")
@@ -32,10 +30,17 @@ std::optional<PlayerCommand> parse_command(const std::string& line) {
     if (verb == "a")
         return MoveCommand{"west"};
 
-    if (verb == "attack" || verb == "use") {
+    if (verb == "attack") {
         int slot = 0;
         if (ss >> slot)
-            return AttackCommand{slot - 1}; // 1-based input → 0-based index
+            return AttackCommand{slot - 1};
+        return std::nullopt;
+    }
+
+    if (verb == "use") {
+        int slot = 0;
+        if (ss >> slot)
+            return HealCommand{slot - 1};
         return std::nullopt;
     }
 
@@ -59,14 +64,4 @@ std::optional<PlayerCommand> parse_command(const std::string& line) {
         return QuitCommand{};
 
     return std::nullopt;
-}
-
-std::jthread launch_input_thread(EventQueue<PlayerCommand>& queue) {
-    return std::jthread([&queue](std::stop_token stop) {
-        std::string line;
-        while (!stop.stop_requested() && std::getline(std::cin, line)) {
-            if (auto cmd = parse_command(line))
-                queue.push(std::move(*cmd));
-        }
-    });
 }

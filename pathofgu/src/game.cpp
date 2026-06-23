@@ -18,6 +18,10 @@
 
 #include <algorithm>
 #include <fmt/format.h>
+#include <ftxui/component/component.hpp>
+#include <ftxui/component/event.hpp>
+
+using namespace ftxui;
 
 Game::Game()
     : reg_(std::make_shared<EntityComponentRegistry>())
@@ -28,22 +32,57 @@ void Game::run() {
     spawn_player();
     spawn_enemies();
 
-    auto input_thread = launch_input_thread(queue_);
+    std::string input_text;
+    auto input = Input(&input_text, "type command…");
 
-    fmt::print("\n");
-    fmt::print("  PATH OF GU\n");
-    fmt::print("  You awaken inside the collapsing Grotto-Heaven of a deceased Rank 6 Immortal.\n");
-    fmt::print("  Fight through to the Guardian's Sanctum and escape.\n");
+    // Renderer wraps the input so it's part of the component tree and receives focus.
+    auto game_ui = Renderer(input, [&] {
+        return vbox({
+            render(*reg_, *world_, player_, status_msg_),
+            separator(),
+            hbox({text(" > "), input->Render()}) | border,
+        });
+    });
 
-    render(*reg_, *world_, player_);
+    // CatchEvent intercepts keys before they reach the Input component.
+    game_ui = CatchEvent(game_ui, [&](Event event) -> bool {
+        // Arrow keys: immediate movement, never conflict with text input.
+        {
+            std::optional<PlayerCommand> cmd;
+            if (event == Event::ArrowUp)
+                cmd = MoveCommand{"north"};
+            else if (event == Event::ArrowDown)
+                cmd = MoveCommand{"south"};
+            else if (event == Event::ArrowRight)
+                cmd = MoveCommand{"east"};
+            else if (event == Event::ArrowLeft)
+                cmd = MoveCommand{"west"};
+            else if (event == Event::Character(' ') && input_text.empty())
+                cmd = SkipCommand{};
 
-    while (running_) {
-        auto cmd = queue_.pop_blocking();
-        process_command(cmd);
-    }
+            if (cmd) {
+                process_command(*cmd);
+                return true;
+            }
+        }
+
+        // Enter submits a typed command
+        if (event == Event::Return && !input_text.empty()) {
+            if (auto cmd = parse_command(input_text))
+                process_command(*cmd);
+            else
+                status_msg_ = "Unknown command.";
+            input_text.clear();
+            return true;
+        }
+
+        return false;
+    });
+
+    screen_.Loop(game_ui);
 }
 
-// ── Spawning ────────────────────────────────────────────────────────────────
+// ── Spawning ──────────────────────────────────────────────────────────────────
 
 void Game::spawn_player() {
     player_ = entity_manager_.createEntity();
@@ -76,6 +115,18 @@ Entity Game::make_enemy(
                                                       : 1;
     reg_->addComponent(e, Stats{base_attack, base_defense, range});
     reg_->addComponent(e, AIBehavior{behavior});
+
+    // Enemies use their loot worms as their own aperture loadout
+    std::vector<GuWorm> enemy_worms;
+    for (const auto& d : drops)
+        enemy_worms.push_back({d.def});
+    reg_->addComponent(e, Aperture{enemy_worms, (int)enemy_worms.size()});
+
+    int essence = (behavior == BehaviorType::Guardian)  ? 80
+                  : (behavior == BehaviorType::Schemer) ? 50
+                                                        : 30;
+    reg_->addComponent(e, PrimevalEssence{essence, essence, 0});
+
     reg_->addComponent(e, Loot{std::move(drops)});
     auto [ex, ey] = world_->random_empty_cell(map);
     reg_->addComponent(e, Position{map, ex, ey});
@@ -84,8 +135,6 @@ Entity Game::make_enemy(
 }
 
 void Game::spawn_enemies() {
-    // Map IDs match World constructor order: 0=entrance, 1=passage, 2=hive,
-    // 3=hall, 4=refinery, 5=cache(loot only), 6=sealed, 7=sanctum(boss)
     auto strength_gu = db_->get("Strength Gu");
     auto iron_skin_gu = db_->get("Iron Skin Gu");
     auto lightning_gu = db_->get("Lightning Gu");
@@ -93,14 +142,9 @@ void Game::spawn_enemies() {
     auto vital_gu = db_->get("Vital Gu");
     auto thunder_gu = db_->get("Thunder Stomp Gu");
 
-    // Map 1 — Spirit Stone Passage
     make_enemy(1, "Wild Strength Gu", 18, 6, 0, BehaviorType::Wild, {{{strength_gu}, 0.80f}});
-
-    // Map 2 — Worm Hive Chamber
     make_enemy(2, "Wild Strength Gu", 18, 6, 0, BehaviorType::Wild, {{{strength_gu}, 0.60f}});
     make_enemy(2, "Wild Iron Skin Worm", 22, 4, 3, BehaviorType::Wild, {{{iron_skin_gu}, 0.60f}});
-
-    // Map 3 — Bloodstained Hall (first Schemer)
     make_enemy(
         3,
         "Demonic Gu Master - Wei",
@@ -110,8 +154,6 @@ void Game::spawn_enemies() {
         BehaviorType::Schemer,
         {{{lightning_gu}, 0.70f}, {{iron_skin_gu}, 0.50f}}
     );
-
-    // Map 4 — Ancient Refinement Chamber
     make_enemy(
         4,
         "Demonic Gu Master - Liu",
@@ -125,12 +167,10 @@ void Game::spawn_enemies() {
         4, "Corrupted Worm Construct", 28, 8, 2, BehaviorType::Wild, {{{strength_gu}, 0.50f}}
     );
 
-    // Map 5 — Forgotten Cache: pre-place loot, no enemies
     Map* cache = world_->get_map(5);
     cache->dropped_worms.push_back({db_->get("Moonlight Gu")});
     cache->dropped_worms.push_back({db_->get("Steel Bones Gu")});
 
-    // Map 6 — Sealed Side Chamber (mini-boss construct)
     make_enemy(
         6,
         "Iron Guardian Construct",
@@ -140,8 +180,6 @@ void Game::spawn_enemies() {
         BehaviorType::Guardian,
         {{{db_->get("Rock Skin Gu")}, 1.0f}, {{thunder_gu}, 0.50f}}
     );
-
-    // Map 7 — Guardian's Sanctum (final boss)
     make_enemy(
         7,
         "Immortal's Guardian",
@@ -153,7 +191,7 @@ void Game::spawn_enemies() {
     );
 }
 
-// ── Command handling ─────────────────────────────────────────────────────────
+// ── Command handling ──────────────────────────────────────────────────────────
 
 void Game::process_command(const PlayerCommand& cmd) {
     std::visit(
@@ -161,17 +199,19 @@ void Game::process_command(const PlayerCommand& cmd) {
         using T = std::decay_t<decltype(c)>;
 
         if constexpr (std::is_same_v<T, QuitCommand>) {
-            fmt::print("You abandon your path. The Grotto-Heaven swallows you whole.\n");
-            running_ = false;
+            status_msg_ = "You abandon your path. The Grotto-Heaven swallows you whole.";
+            screen_.Exit();
             return;
         }
 
         if constexpr (std::is_same_v<T, MoveCommand>) {
-            if (move_player(*reg_, *world_, player_, c.direction)) {
+            bool moved = move_player(*reg_, *world_, player_, c.direction);
+            if (moved) {
                 auto* essence = reg_->getComponent<PrimevalEssence>(player_);
                 int regen = std::max(1, essence->max / 5);
                 essence->current = std::min(essence->max, essence->current + regen);
                 essence->depleted_turns = 0;
+                status_msg_.clear();
             }
         }
 
@@ -179,26 +219,22 @@ void Game::process_command(const PlayerCommand& cmd) {
             auto* pos = reg_->getComponent<Position>(player_);
             Map* map = world_->get_map(pos->map_id);
 
-            // Collect living enemies
             std::vector<Entity> enemies;
-            for (Entity e : map->entities) {
+            for (Entity e : map->entities)
                 if (e != player_ && reg_->getComponent<Health>(e))
                     enemies.push_back(e);
-            }
 
             if (enemies.empty()) {
-                fmt::print("No enemies here.\n");
+                status_msg_ = "No enemies here.";
                 return;
             }
 
-            // Default target: first enemy
             Entity target = enemies[0];
             auto result = player_attack(*reg_, player_, target, c.worm_slot);
-            fmt::print("{}\n", result.message);
+            status_msg_ = result.message;
 
             if (result.success) {
                 if (result.target_died) {
-                    fmt::print("Loot:\n");
                     process_death(*reg_, *world_, target);
                     destroy_entity(target);
                 }
@@ -206,55 +242,56 @@ void Game::process_command(const PlayerCommand& cmd) {
             }
         }
 
+        if constexpr (std::is_same_v<T, HealCommand>) {
+            auto result = player_use(*reg_, player_, c.worm_slot);
+            status_msg_ = result.message;
+            if (result.success)
+                post_action_tick();
+        }
+
         if constexpr (std::is_same_v<T, PickupCommand>) {
             pickup_worm(*reg_, *world_, player_, c.pickup_index);
+            status_msg_.clear();
         }
 
         if constexpr (std::is_same_v<T, DropCommand>) {
             drop_worm(*reg_, *world_, player_, c.pickup_index);
+            status_msg_.clear();
         }
 
         if constexpr (std::is_same_v<T, SkipCommand>) {
-            fmt::print("You focus and let your essence settle.\n");
             auto* essence = reg_->getComponent<PrimevalEssence>(player_);
             if (!is_in_combat()) {
                 int regen = std::max(1, essence->max / 5);
                 essence->current = std::min(essence->max, essence->current + regen);
+                status_msg_ = "You focus and let your essence settle.";
             }
             post_action_tick();
         }
         },
         cmd);
 
-    if (!running_)
-        return;
-
-    if (check_win())
-        return;
-
-    render(*reg_, *world_, player_);
+    check_win();
 }
 
 void Game::post_action_tick() {
     auto* essence = reg_->getComponent<PrimevalEssence>(player_);
 
     if (is_in_combat()) {
-        fmt::print("\nEnemies act:\n");
-        ai_tick(*reg_, *world_, player_);
+        std::string ai_msgs = ai_tick(*reg_, *world_, player_);
+        if (!ai_msgs.empty())
+            status_msg_ += (status_msg_.empty() ? "" : "\n") + ai_msgs;
         check_deaths();
 
         if (essence->current == 0) {
             essence->depleted_turns++;
             if (essence->depleted_turns >= 3) {
-                fmt::print("\nYour aperture has collapsed — essence depleted for 3 turns.\n");
-                fmt::print("DEFEAT.\n");
-                running_ = false;
+                status_msg_ = "Your aperture has collapsed. DEFEAT.";
+                screen_.Exit();
                 return;
             }
-            fmt::print(
-                "WARNING: Aperture at risk — essence depleted ({}/3 turns)!\n",
-                essence->depleted_turns
-            );
+            status_msg_ +=
+                fmt::format("  WARNING: essence depleted ({}/3 turns)!", essence->depleted_turns);
         } else {
             essence->depleted_turns = 0;
         }
@@ -264,9 +301,8 @@ void Game::post_action_tick() {
 void Game::check_deaths() {
     auto* player_hp = reg_->getComponent<Health>(player_);
     if (player_hp->hp <= 0) {
-        fmt::print("\nYou have fallen. Your Gu worms scatter into the void.\n");
-        fmt::print("DEFEAT.\n");
-        running_ = false;
+        status_msg_ = "You have fallen. Your Gu worms scatter into the void. DEFEAT.";
+        screen_.Exit();
     }
 }
 
@@ -276,29 +312,21 @@ bool Game::check_win() {
     if (!map->is_exit)
         return false;
 
-    // Must clear the map first
-    for (Entity e : map->entities) {
+    for (Entity e : map->entities)
         if (e != player_ && reg_->getComponent<Health>(e))
             return false;
-    }
 
-    fmt::print("\n==========================================\n");
-    fmt::print("  The exit seal shatters. You step through.\n");
-    fmt::print("  The Grotto-Heaven collapses behind you.\n");
-    fmt::print("  You have escaped. Your path continues.\n");
-    fmt::print("  VICTORY.\n");
-    fmt::print("==========================================\n");
-    running_ = false;
+    status_msg_ = "The exit seal shatters. You step through. VICTORY.";
+    screen_.Exit();
     return true;
 }
 
 bool Game::is_in_combat() const {
     auto* pos = reg_->getComponent<Position>(player_);
     Map* map = world_->get_map(pos->map_id);
-    for (Entity e : map->entities) {
+    for (Entity e : map->entities)
         if (e != player_ && reg_->getComponent<AIBehavior>(e) && reg_->getComponent<Health>(e))
             return true;
-    }
     return false;
 }
 

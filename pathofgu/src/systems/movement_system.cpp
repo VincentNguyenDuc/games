@@ -49,6 +49,15 @@ bool move_player(
         return true;
     }
 
+    // Block movement into a cell occupied by another entity.
+    for (Entity e : map->entities) {
+        if (e == player)
+            continue;
+        auto* epos = reg.getComponent<Position>(e);
+        if (epos && epos->x == nx && epos->y == ny)
+            return false;
+    }
+
     pos->x = nx;
     pos->y = ny;
     return true;

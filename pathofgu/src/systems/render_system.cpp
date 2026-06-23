@@ -7,8 +7,9 @@
 #include "components/position.hpp"
 #include "components/primeval_essence.hpp"
 
-#include <array>
-#include <fmt/format.h>
+#include <ftxui/dom/elements.hpp>
+
+using namespace ftxui;
 
 static const char* worm_type_label(GuWormType t) {
     switch (t) {
@@ -26,24 +27,42 @@ static const char* worm_type_label(GuWormType t) {
     return "???";
 }
 
-void render(EntityComponentRegistry& reg, World& world, Entity player) {
-    auto* pos = reg.getComponent<Position>(player);
-    Map* map = world.get_map(pos->map_id);
+// One grid cell: 2 chars wide, coloured by type / occupant.
+static Element cell_element(int cell_type, char occupant) {
+    std::string s{occupant, ' '};
+    switch (occupant) {
+    case '@':
+        return text(s) | color(Color::GreenLight) | bold;
+    case 'D':
+        return text(s) | color(Color::Yellow) | bold;
+    default:
+        break;
+    }
+    if (occupant >= '1' && occupant <= '9')
+        return text(s) | color(Color::Red) | bold;
 
-    fmt::print("\n===========================================\n");
-    fmt::print("  {}\n", map->name);
-    fmt::print("===========================================\n");
-    fmt::print("{}\n\n", map->description);
+    switch (cell_type) {
+    case 1 /*Wall*/:
+        return text(s) | color(Color::GrayDark);
+    case 2 /*Door*/:
+        return text(s) | color(Color::Yellow) | bold;
+    default:
+        return text(s) | color(Color::BlueLight);
+    }
+}
 
-    // Build display grid from cell types
-    std::array<std::array<char, 10>, 10> display{};
+static Element build_grid(
+    EntityComponentRegistry& reg, World& world, Entity player, Map* map, const Position* pos
+) {
+    // Build display buffer
+    char display[10][10];
     for (int y = 0; y < 10; ++y)
         for (int x = 0; x < 10; ++x) {
             switch (map->grid[y][x]) {
-            case Cell::Wall:
+            case 1:
                 display[y][x] = '#';
                 break;
-            case Cell::Door:
+            case 2:
                 display[y][x] = 'D';
                 break;
             default:
@@ -52,90 +71,156 @@ void render(EntityComponentRegistry& reg, World& world, Entity player) {
             }
         }
 
-    // Overlay enemies (numbered 1–9)
-    int enemy_num = 1;
-    std::vector<std::pair<Entity, int>> enemy_list; // entity + display number
+    // Overlay enemies
+    int num = 1;
     for (Entity e : map->entities) {
         if (e == player)
             continue;
         auto* epos = reg.getComponent<Position>(e);
         auto* hp = reg.getComponent<Health>(e);
-        if (epos && hp && hp->hp > 0 && enemy_num <= 9) {
-            display[epos->y][epos->x] = static_cast<char>('0' + enemy_num);
-            enemy_list.emplace_back(e, enemy_num++);
-        }
+        if (epos && hp && hp->hp > 0 && num <= 9)
+            display[epos->y][epos->x] = static_cast<char>('0' + num++);
     }
-
-    // Overlay player
     display[pos->y][pos->x] = '@';
 
-    // Print grid
+    // Build FTXUI element (vbox of hboxes)
+    Elements rows;
     for (int y = 0; y < 10; ++y) {
+        Elements row;
         for (int x = 0; x < 10; ++x)
-            fmt::print("{} ", display[y][x]);
-        fmt::print("\n");
+            row.push_back(cell_element(map->grid[y][x], display[y][x]));
+        rows.push_back(hbox(std::move(row)));
     }
-    fmt::print("Legend: # wall  . floor  D door  @ you  1-9 enemy\n\n");
+    return vbox(std::move(rows)) | border;
+}
 
-    // Enemy list
-    for (auto [e, num] : enemy_list) {
+static Element build_info_panel(EntityComponentRegistry& reg, Map* map, Entity player) {
+    Elements lines;
+
+    // Enemies
+    lines.push_back(text("Enemies:") | bold);
+    int num = 1;
+    bool any_enemy = false;
+    for (Entity e : map->entities) {
+        if (e == player)
+            continue;
         auto* hp = reg.getComponent<Health>(e);
         auto* name = reg.getComponent<Name>(e);
-        fmt::print("  [{}] {:25s}  HP: {}/{}\n", num, name->value, hp->hp, hp->max_hp);
+        if (hp && name) {
+            any_enemy = true;
+            lines.push_back(hbox({
+                text(std::string("[") + char('0' + num++) + "] ") | color(Color::Red),
+                text(name->value + "  "),
+                text("HP ") | color(Color::GrayLight),
+                text(std::to_string(hp->hp) + "/" + std::to_string(hp->max_hp)) |
+                    color(hp->hp < hp->max_hp / 2 ? Color::Red : Color::Green),
+            }));
+        }
     }
-    if (enemy_list.empty())
-        fmt::print("  (no enemies)\n");
+    if (!any_enemy)
+        lines.push_back(text("  (none)") | color(Color::GrayDark));
+
+    lines.push_back(separator());
 
     // Dropped worms
-    fmt::print("\nDropped worms:\n");
+    lines.push_back(text("Worms on floor:") | bold);
     if (map->dropped_worms.empty()) {
-        fmt::print("  (none)\n");
+        lines.push_back(text("  (none)") | color(Color::GrayDark));
     } else {
         for (int i = 0; i < (int)map->dropped_worms.size(); ++i) {
             const auto& def = *map->dropped_worms[i].def;
-            fmt::print(
-                "  [{}] {:25s}  Rank {}  {} +{}\n",
-                i + 1,
-                def.name,
-                def.rank,
-                worm_type_label(def.type),
-                def.effect_value
-            );
+            lines.push_back(hbox({
+                text("[" + std::to_string(i + 1) + "] ") | color(Color::Yellow),
+                text(def.name + "  "),
+                text(
+                    std::string(worm_type_label(def.type)) + " +" + std::to_string(def.effect_value)
+                ) | color(Color::Cyan),
+            }));
         }
     }
 
-    // Player status
+    return vbox(std::move(lines)) | border | flex;
+}
+
+static Element build_stats_panel(EntityComponentRegistry& reg, Entity player, const Position* pos) {
     auto* hp = reg.getComponent<Health>(player);
     auto* essence = reg.getComponent<PrimevalEssence>(player);
     auto* rank = reg.getComponent<CultivationRank>(player);
     auto* name = reg.getComponent<Name>(player);
     auto* ap = reg.getComponent<Aperture>(player);
 
-    fmt::print("\n-------------------------------------------\n");
-    fmt::print(
-        "{} | HP: {}/{} | Essence: {}/{} | Rank {} | pos ({},{})\n",
-        name->value,
-        hp->hp,
-        hp->max_hp,
-        essence->current,
-        essence->max,
-        rank->rank,
-        pos->x,
-        pos->y
+    Color hp_color = hp->hp < hp->max_hp / 3       ? Color::Red
+                     : hp->hp < hp->max_hp * 2 / 3 ? Color::Yellow
+                                                   : Color::Green;
+
+    Elements stat_line = {
+        text(name->value) | bold | color(Color::GreenLight),
+        text("  │  HP "),
+        text(std::to_string(hp->hp) + "/" + std::to_string(hp->max_hp)) | color(hp_color),
+        text("  │  Essence "),
+        text(std::to_string(essence->current) + "/" + std::to_string(essence->max)) |
+            color(Color::Cyan),
+        text("  │  Rank "),
+        text(std::to_string(rank->rank)) | bold | color(Color::Yellow),
+        text("  │  (" + std::to_string(pos->x) + "," + std::to_string(pos->y) + ")") |
+            color(Color::GrayLight),
+    };
+
+    Elements worm_lines;
+    worm_lines.push_back(
+        text(
+            "Aperture (" + std::to_string((int)ap->worms.size()) + "/" +
+            std::to_string(ap->capacity) + " slots):"
+        ) |
+        bold
     );
-    fmt::print("Aperture ({}/{} slots):\n", (int)ap->worms.size(), ap->capacity);
     for (int i = 0; i < (int)ap->worms.size(); ++i) {
         const auto& def = *ap->worms[i].def;
-        fmt::print(
-            "  [{}] {:25s}  Rank {}  {} +{:3d}   Cost: {} essence\n",
-            i + 1,
-            def.name,
-            def.rank,
-            worm_type_label(def.type),
-            def.effect_value,
-            def.essence_cost
-        );
+        worm_lines.push_back(hbox({
+            text("[" + std::to_string(i + 1) + "] ") | color(Color::Yellow),
+            text(def.name + "  "),
+            text(std::string(worm_type_label(def.type)) + " +" + std::to_string(def.effect_value)) |
+                color(Color::Cyan),
+            text("  cost " + std::to_string(def.essence_cost)) | color(Color::GrayLight),
+            text("  range " + std::to_string(def.range)) | color(Color::GrayLight),
+        }));
     }
-    fmt::print("-------------------------------------------\n");
-    fmt::print("attack <slot>  |  w/a/s/d  |  pickup <#>  |  drop <#>  |  skip  |  quit\n> ");
+
+    return vbox({
+               hbox(std::move(stat_line)),
+               vbox(std::move(worm_lines)),
+           }) |
+           border;
+}
+
+ftxui::Element render(
+    EntityComponentRegistry& reg, World& world, Entity player, const std::string& status_msg
+) {
+    auto* pos = reg.getComponent<Position>(player);
+    Map* map = world.get_map(pos->map_id);
+
+    auto header = vbox({
+        text(map->name) | bold | color(Color::GreenLight) | hcenter,
+        text(map->description) | color(Color::GrayLight) | hcenter,
+    });
+
+    auto grid = build_grid(reg, world, player, map, pos);
+    auto info_panel = build_info_panel(reg, map, player);
+    auto stats = build_stats_panel(reg, player, pos);
+
+    auto hint = text("↑↓←→ move  ·  attack N  ·  use N (heal/buff)  ·  pickup N  ·  drop N  ·  "
+                     "space skip  ·  quit") |
+                color(Color::GrayDark) | hcenter;
+
+    Element status_line = status_msg.empty() ? text("") : text(status_msg) | color(Color::Yellow);
+
+    return vbox({
+        header,
+        separator(),
+        hbox({grid, info_panel}),
+        stats,
+        separator(),
+        status_line,
+        hint,
+    });
 }

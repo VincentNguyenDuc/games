@@ -3,22 +3,22 @@
 #include "components/ai_behavior.hpp"
 #include "ecs/entity.hpp"
 #include "ecs/registry.hpp"
-#include "events/event_queue.hpp"
 #include "events/events.hpp"
 #include "items/gu_worm_db.hpp"
 #include "world/world.hpp"
 
+#include <ftxui/component/screen_interactive.hpp>
 #include <memory>
-#include <thread>
+#include <string>
 
 class Game {
     std::shared_ptr<EntityComponentRegistry> reg_;
     std::unique_ptr<World> world_;
     std::unique_ptr<IGuWormDatabase> db_;
     EntityManager entity_manager_;
-    EventQueue<PlayerCommand> queue_;
     Entity player_;
-    bool running_ = true;
+    ftxui::ScreenInteractive screen_ = ftxui::ScreenInteractive::Fullscreen();
+    std::string status_msg_;
 
 public:
     Game();
