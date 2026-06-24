@@ -1,9 +1,6 @@
 #include "systems/ai_system.hpp"
 
 #include "actions/combat.hpp"
-
-using namespace ecse;
-
 #include "components/ai_behavior.hpp"
 #include "components/aperture.hpp"
 #include "components/attack_effect.hpp"
@@ -21,6 +18,8 @@ using namespace ecse;
 #include <future>
 #include <random>
 #include <vector>
+
+using namespace ecse;
 
 struct AIDecision {
     Entity entity;

@@ -17,6 +17,7 @@ BinPackParameters: false
 BinPackArguments: false
 AlignAfterOpenBracket: BlockIndent
 LambdaBodyIndentation: OuterScope
+SortUsingDeclarations: true
 SortIncludes: CaseSensitive
 IncludeBlocks: Regroup
 IncludeCategories:

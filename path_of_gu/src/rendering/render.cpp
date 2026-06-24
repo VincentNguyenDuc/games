@@ -1,8 +1,6 @@
 #include "rendering/render.hpp"
 
 #include "components/aperture.hpp"
-
-using namespace ecse;
 #include "components/cultivation_rank.hpp"
 #include "components/health.hpp"
 #include "components/name.hpp"
@@ -12,6 +10,7 @@ using namespace ecse;
 #include <ftxui/dom/elements.hpp>
 
 using namespace ftxui;
+using namespace ecse;
 
 static const char* worm_type_label(GuWormType t) {
     switch (t) {

@@ -1,10 +1,10 @@
 #include "world/world.hpp"
 
 #include <algorithm>
-
-using namespace ecse;
 #include <random>
 #include <stdexcept>
+
+using namespace ecse;
 
 // Dungeon layout (map IDs match construction order):
 //

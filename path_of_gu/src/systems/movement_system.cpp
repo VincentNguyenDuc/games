@@ -1,12 +1,12 @@
 #include "systems/movement_system.hpp"
 
 #include "components/move_intent.hpp"
-
-using namespace ecse;
 #include "components/name.hpp"
 #include "components/position.hpp"
 
 #include <fmt/format.h>
+
+using namespace ecse;
 
 MoveTickSystem::MoveTickSystem(GameWorld& gw)
     : game_world(gw) {

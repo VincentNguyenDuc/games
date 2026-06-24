@@ -1,8 +1,6 @@
 #include "systems/effect_system.hpp"
 
 #include "components/attack_effect.hpp"
-
-using namespace ecse;
 #include "components/health.hpp"
 #include "components/name.hpp"
 #include "components/primeval_essence.hpp"
@@ -10,6 +8,8 @@ using namespace ecse;
 #include "components/stats.hpp"
 
 #include <fmt/format.h>
+
+using namespace ecse;
 
 SelfEffectTickSystem::SelfEffectTickSystem() {
     reads = {
