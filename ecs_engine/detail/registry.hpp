@@ -16,7 +16,7 @@ struct IComponentStore {
 
 // Sparse set: O(1) add/get/remove, components packed contiguously in `dense`.
 template <typename T>
-struct ComponentStore : IComponentStore {
+struct SparseSetComponentStore : IComponentStore {
     static constexpr uint32_t INVALID = std::numeric_limits<uint32_t>::max();
 
     std::vector<uint32_t> sparse; // sparse[entity] → index into dense, or INVALID
@@ -62,11 +62,11 @@ class EntityComponentRegistry {
     std::unordered_map<ComponentType, std::unique_ptr<IComponentStore>> stores_;
 
     template <typename T>
-    ComponentStore<T>& store() {
+    SparseSetComponentStore<T>& store() {
         auto& ptr = stores_[std::type_index(typeid(T))];
         if (!ptr)
-            ptr = std::make_unique<ComponentStore<T>>();
-        return *static_cast<ComponentStore<T>*>(ptr.get());
+            ptr = std::make_unique<SparseSetComponentStore<T>>();
+        return *static_cast<SparseSetComponentStore<T>*>(ptr.get());
     }
 
 public:
