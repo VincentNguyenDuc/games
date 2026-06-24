@@ -1,6 +1,6 @@
 find_package(ftxui CONFIG REQUIRED)
 
-add_executable(pathofgu
+add_executable(path_of_gu
     src/main.cpp
     src/items/gu_worm_db.cpp
     src/input/parser.cpp
@@ -13,8 +13,8 @@ add_executable(pathofgu
     src/systems/ai_system.cpp
     src/game.cpp
 )
-target_include_directories(pathofgu PRIVATE include)
-target_link_libraries(pathofgu PRIVATE
+target_include_directories(path_of_gu PRIVATE include)
+target_link_libraries(path_of_gu PRIVATE
     ecs_engine
     fmt::fmt
     spdlog::spdlog

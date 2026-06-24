@@ -20,6 +20,6 @@ find_package(Catch2 3 CONFIG REQUIRED)
 enable_testing()
 
 add_subdirectory(ecs_engine)
-add_subdirectory(tictactoe)
-add_subdirectory(pathofgu)
+add_subdirectory(tic_tac_toe)
+add_subdirectory(path_of_gu)
 add_subdirectory(leah_village)

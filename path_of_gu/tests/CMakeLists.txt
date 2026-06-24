@@ -1,4 +1,4 @@
-add_executable(pathofgu-tests
+add_executable(path_of_gu-tests
     test_ecs.cpp
     test_items.cpp
     test_event_queue.cpp
@@ -10,9 +10,9 @@ add_executable(pathofgu-tests
     ../src/systems/loot_system.cpp
     ../src/world/world.cpp
 )
-target_include_directories(pathofgu-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../include)
-target_link_libraries(pathofgu-tests PRIVATE ecs_engine Catch2::Catch2WithMain fmt::fmt spdlog::spdlog)
+target_include_directories(path_of_gu-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../include)
+target_link_libraries(path_of_gu-tests PRIVATE ecs_engine Catch2::Catch2WithMain fmt::fmt spdlog::spdlog)
 
 include(CTest)
 include(Catch)
-catch_discover_tests(pathofgu-tests)
+catch_discover_tests(path_of_gu-tests)
