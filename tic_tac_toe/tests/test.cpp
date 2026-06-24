@@ -1,6 +1,6 @@
-#include <catch2/catch_test_macros.hpp>
-
 #include "state.hpp"
+
+#include <catch2/catch_test_macros.hpp>
 
 TEST_CASE("initial state has empty board and X starts") {
     auto state = initial_state();

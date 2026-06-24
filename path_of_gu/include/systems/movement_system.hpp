@@ -5,6 +5,10 @@
 
 #include <string>
 
+using ecse::CommandBuffer;
+using ecse::EntityComponentRegistry;
+using ecse::ISystem;
+
 struct MoveTickSystem : ISystem {
     GameWorld& game_world;
     std::string output;

@@ -1,5 +1,7 @@
 #include "engine.hpp"
 
+namespace ecse {
+
 void Engine::tick() {
     for (const auto& wave : scheduler_.get_waves()) {
         for (int idx : wave) {
@@ -10,3 +12,5 @@ void Engine::tick() {
             cmd_buffers_[idx].flush(registry_, entities_);
     }
 }
+
+} // namespace ecse

@@ -4,6 +4,8 @@
 #include <limits>
 #include <queue>
 
+namespace ecse {
+
 using Entity = std::uint16_t;
 const Entity ENTITY_LIMIT = std::numeric_limits<Entity>::max();
 
@@ -17,3 +19,5 @@ public:
     Entity createEntity();
     void destroyEntity(Entity entity);
 };
+
+} // namespace ecse

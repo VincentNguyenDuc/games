@@ -5,6 +5,8 @@
 #include <optional>
 #include <queue>
 
+namespace ecse {
+
 template <typename T>
 class EventQueue {
     std::queue<T> queue_;
@@ -44,3 +46,5 @@ public:
         return queue_.empty();
     }
 };
+
+} // namespace ecse

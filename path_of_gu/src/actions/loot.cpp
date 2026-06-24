@@ -8,6 +8,8 @@
 #include <fmt/format.h>
 #include <random>
 
+using namespace ecse;
+
 static std::mt19937& rng() {
     static std::mt19937 gen(std::random_device{}());
     return gen;

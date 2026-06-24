@@ -1,6 +1,8 @@
 #include "rendering/render.hpp"
 
 #include "components/aperture.hpp"
+
+using namespace ecse;
 #include "components/cultivation_rank.hpp"
 #include "components/health.hpp"
 #include "components/name.hpp"

@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <vector>
 
+using ecse::Entity;
 using MapId = std::uint32_t;
 
 namespace Cell {

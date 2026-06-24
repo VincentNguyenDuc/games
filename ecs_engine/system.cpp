@@ -1,5 +1,7 @@
 #include "system.hpp"
 
+namespace ecse {
+
 static bool conflicts(const ISystem& a, const ISystem& b) {
     for (const auto& w : a.writes) {
         for (const auto& r : b.reads)
@@ -64,3 +66,5 @@ void SystemsScheduler::compute_waves() {
 }
 
 const NodeWaves& SystemsScheduler::get_waves() const { return waves; }
+
+} // namespace ecse

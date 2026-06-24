@@ -13,6 +13,9 @@
 #include <memory>
 #include <string>
 
+using ecse::Engine;
+using ecse::Entity;
+
 class Game {
     GameWorld game_world_;
     Engine ecs_engine_;

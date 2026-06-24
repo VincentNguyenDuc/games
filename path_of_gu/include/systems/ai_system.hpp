@@ -5,6 +5,11 @@
 
 #include <string>
 
+using ecse::CommandBuffer;
+using ecse::Entity;
+using ecse::EntityComponentRegistry;
+using ecse::ISystem;
+
 struct AiTickSystem : ISystem {
     GameWorld& game_world;
     Entity player;

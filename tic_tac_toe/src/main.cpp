@@ -1,7 +1,7 @@
+#include "state.hpp"
+
 #include <fmt/format.h>
 #include <iostream>
-
-#include "state.hpp"
 
 int main() {
     fmt::print("Tic Tac Toe\n\n");

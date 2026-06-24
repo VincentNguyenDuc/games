@@ -1,5 +1,4 @@
 #include <catch2/catch_test_macros.hpp>
-
 #include <items/gu_worm_db.hpp>
 
 // The default constructor pre-seeds 20 canonical worms (rank 1–5).

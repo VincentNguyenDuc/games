@@ -6,6 +6,9 @@
 #include <ftxui/dom/elements.hpp>
 #include <string>
 
+using ecse::Entity;
+using ecse::EntityComponentRegistry;
+
 ftxui::Element render(
     EntityComponentRegistry& reg, GameWorld& world, Entity player, const std::string& status_msg
 );

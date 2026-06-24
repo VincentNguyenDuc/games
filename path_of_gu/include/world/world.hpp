@@ -6,6 +6,8 @@
 #include <unordered_map>
 #include <utility>
 
+using ecse::Entity;
+
 class GameWorld {
     std::unordered_map<MapId, std::unique_ptr<Map>> maps_;
     MapId next_id_ = 0;

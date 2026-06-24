@@ -1,8 +1,9 @@
-#include <catch2/catch_test_macros.hpp>
-
 #include "ecs.hpp"
 
+#include <catch2/catch_test_macros.hpp>
 #include <thread>
+
+using namespace ecse;
 #include <vector>
 
 TEST_CASE("push and pop_blocking round-trip", "[event_queue]") {

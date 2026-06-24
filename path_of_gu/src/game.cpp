@@ -1,6 +1,8 @@
 #include "game.hpp"
 
 #include "actions/combat.hpp"
+
+using namespace ecse;
 #include "actions/loot.hpp"
 #include "components/ai_behavior.hpp"
 #include "components/aperture.hpp"

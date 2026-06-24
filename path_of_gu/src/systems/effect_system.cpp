@@ -1,6 +1,8 @@
 #include "systems/effect_system.hpp"
 
 #include "components/attack_effect.hpp"
+
+using namespace ecse;
 #include "components/health.hpp"
 #include "components/name.hpp"
 #include "components/primeval_essence.hpp"

@@ -1,5 +1,8 @@
 #include "systems/ai_system.hpp"
+
 #include "actions/combat.hpp"
+
+using namespace ecse;
 
 #include "components/ai_behavior.hpp"
 #include "components/aperture.hpp"

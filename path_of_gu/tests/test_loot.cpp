@@ -1,5 +1,3 @@
-#include <catch2/catch_test_macros.hpp>
-
 #include "actions/loot.hpp"
 #include "components/aperture.hpp"
 #include "components/loot.hpp"
@@ -9,7 +7,10 @@
 #include "items/gu_worm.hpp"
 #include "world/world.hpp"
 
+#include <catch2/catch_test_macros.hpp>
 #include <memory>
+
+using namespace ecse;
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 

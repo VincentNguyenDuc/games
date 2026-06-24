@@ -9,6 +9,8 @@
 #include <memory>
 #include <vector>
 
+namespace ecse {
+
 class Engine {
     EntityManager entities_;
     EntityComponentRegistry registry_;
@@ -40,3 +42,5 @@ public:
 
     void tick();
 };
+
+} // namespace ecse

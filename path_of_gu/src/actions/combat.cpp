@@ -9,6 +9,8 @@
 
 #include <fmt/format.h>
 
+using namespace ecse;
+
 ActivationResult activate_worm(
     EntityComponentRegistry& reg, Entity source, Entity target, int worm_slot
 ) {

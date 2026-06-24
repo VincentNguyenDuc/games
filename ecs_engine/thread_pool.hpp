@@ -8,6 +8,8 @@
 #include <thread>
 #include <vector>
 
+namespace ecse {
+
 class ThreadPool {
     std::vector<std::thread> workers_;
     std::queue<std::function<void()>> tasks_;
@@ -67,3 +69,5 @@ private:
         }
     }
 };
+
+} // namespace ecse

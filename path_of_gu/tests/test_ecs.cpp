@@ -1,6 +1,8 @@
+#include "ecs.hpp"
+
 #include <catch2/catch_test_macros.hpp>
 
-#include "ecs.hpp"
+using namespace ecse;
 
 struct Pos {
     float x, y;
