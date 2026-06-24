@@ -150,23 +150,23 @@ struct CountingSystem : ISystem {
     }
 };
 
-TEST_CASE("World::tick runs all systems and mutates components", "[world]") {
+TEST_CASE("Engine::tick runs all systems and mutates components", "[engine]") {
     std::atomic<int> ticks{0};
-    World world;
-    world.add_system<CountingSystem>(&ticks);
-    world.build();
+    Engine engine;
+    engine.add_system<CountingSystem>(&ticks);
+    engine.build();
 
-    Entity e = world.entities().createEntity();
-    world.registry().addComponent(e, Position{0.0f, 0.0f});
+    Entity e = engine.entities().createEntity();
+    engine.registry().addComponent(e, Position{0.0f, 0.0f});
 
-    world.tick();
-    world.tick();
+    engine.tick();
+    engine.tick();
 
     REQUIRE(ticks.load() == 2);
-    REQUIRE(world.registry().getComponent<Position>(e)->x == 2.0f);
+    REQUIRE(engine.registry().getComponent<Position>(e)->x == 2.0f);
 }
 
-TEST_CASE("CommandBuffer deferred add_component is visible after flush", "[world]") {
+TEST_CASE("CommandBuffer deferred add_component is visible after flush", "[engine]") {
     struct SpawnSystem : ISystem {
         Entity target;
         explicit SpawnSystem(Entity e)
@@ -178,13 +178,13 @@ TEST_CASE("CommandBuffer deferred add_component is visible after flush", "[world
         }
     };
 
-    World world;
-    Entity e = world.entities().createEntity();
-    world.add_system<SpawnSystem>(e);
-    world.build();
+    Engine engine;
+    Entity e = engine.entities().createEntity();
+    engine.add_system<SpawnSystem>(e);
+    engine.build();
 
-    REQUIRE(world.registry().getComponent<Velocity>(e) == nullptr);
-    world.tick(); // SpawnSystem queues the add; flush applies it
-    REQUIRE(world.registry().getComponent<Velocity>(e) != nullptr);
-    REQUIRE(world.registry().getComponent<Velocity>(e)->dx == 3.0f);
+    REQUIRE(engine.registry().getComponent<Velocity>(e) == nullptr);
+    engine.tick(); // SpawnSystem queues the add; flush applies it
+    REQUIRE(engine.registry().getComponent<Velocity>(e) != nullptr);
+    REQUIRE(engine.registry().getComponent<Velocity>(e)->dx == 3.0f);
 }

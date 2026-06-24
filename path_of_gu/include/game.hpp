@@ -15,13 +15,13 @@
 
 class Game {
     GameWorld game_world_;
-    World ecs_world_;
+    Engine ecs_engine_;
     std::unique_ptr<IGuWormDatabase> db_;
     Entity player_;
     ftxui::ScreenInteractive screen_ = ftxui::ScreenInteractive::Fullscreen();
     std::string status_msg_;
 
-    // Non-owning — systems are owned by ecs_world_.
+    // Non-owning — systems are owned by ecs_engine_.
     AiTickSystem* ai_sys_{nullptr};
     MoveTickSystem* move_sys_{nullptr};
     SelfEffectTickSystem* self_eff_sys_{nullptr};

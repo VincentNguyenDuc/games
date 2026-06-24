@@ -1,15 +1,15 @@
 #pragma once
 
-#include "detail/command_buffer.hpp"
-#include "detail/entity.hpp"
-#include "detail/registry.hpp"
-#include "detail/system.hpp"
-#include "detail/thread_pool.hpp"
+#include "command_buffer.hpp"
+#include "entity.hpp"
+#include "registry.hpp"
+#include "system.hpp"
+#include "thread_pool.hpp"
 
 #include <memory>
 #include <vector>
 
-class World {
+class Engine {
     EntityManager entities_;
     EntityComponentRegistry registry_;
     SystemsScheduler scheduler_;

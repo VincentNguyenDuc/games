@@ -8,7 +8,7 @@ The `ecs_engine` is a lightweight, header-based Entity Component System shared a
 #include "ecs.hpp"  // pulls in entity, registry, and event_queue
 ```
 
-Internal headers live under `detail/` and are not part of the public API.
+Internal headers live under `` and are not part of the public API.
 
 ## Linking (CMake)
 

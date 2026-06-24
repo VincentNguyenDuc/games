@@ -29,18 +29,18 @@ void Game::run() {
     spawn_player();
     spawn_enemies();
 
-    ai_sys_ = &ecs_world_.add_system<AiTickSystem>(game_world_, player_);
-    move_sys_ = &ecs_world_.add_system<MoveTickSystem>(game_world_);
-    self_eff_sys_ = &ecs_world_.add_system<SelfEffectTickSystem>();
-    atk_eff_sys_ = &ecs_world_.add_system<AttackEffectTickSystem>();
-    ecs_world_.build();
+    ai_sys_ = &ecs_engine_.add_system<AiTickSystem>(game_world_, player_);
+    move_sys_ = &ecs_engine_.add_system<MoveTickSystem>(game_world_);
+    self_eff_sys_ = &ecs_engine_.add_system<SelfEffectTickSystem>();
+    atk_eff_sys_ = &ecs_engine_.add_system<AttackEffectTickSystem>();
+    ecs_engine_.build();
 
     std::string input_text;
     auto input = Input(&input_text, "type command…");
 
     auto game_ui = Renderer(input, [&] {
         return vbox({
-            render(ecs_world_.registry(), game_world_, player_, status_msg_),
+            render(ecs_engine_.registry(), game_world_, player_, status_msg_),
             separator(),
             hbox({text(" > "), input->Render()}) | border,
         });
@@ -84,10 +84,10 @@ void Game::run() {
 // ── Spawning ──────────────────────────────────────────────────────────────────
 
 void Game::spawn_player() {
-    player_ = ecs_world_.entities().createEntity();
+    player_ = ecs_engine_.entities().createEntity();
     auto strength_gu = db_->get("Strength Gu");
 
-    auto& reg = ecs_world_.registry();
+    auto& reg = ecs_engine_.registry();
     reg.addComponent(player_, Name{"Fang Yuan"});
     reg.addComponent(player_, Health{100, 100});
     reg.addComponent(player_, PrimevalEssence{60, 60, 0});
@@ -107,8 +107,8 @@ Entity Game::make_enemy(
     BehaviorType behavior,
     std::vector<GuWormDrop> drops
 ) {
-    Entity e = ecs_world_.entities().createEntity();
-    auto& reg = ecs_world_.registry();
+    Entity e = ecs_engine_.entities().createEntity();
+    auto& reg = ecs_engine_.registry();
     reg.addComponent(e, Name{name});
     reg.addComponent(e, Health{hp, hp});
     int range = (behavior == BehaviorType::Guardian)  ? 2
@@ -194,7 +194,7 @@ void Game::spawn_enemies() {
 // ── Command handling ──────────────────────────────────────────────────────────
 
 void Game::process_command(const PlayerCommand& cmd) {
-    auto& reg = ecs_world_.registry();
+    auto& reg = ecs_engine_.registry();
 
     std::visit(
         [this, &reg](const auto& c) {
@@ -296,7 +296,7 @@ void Game::post_action_tick() {
     if (!is_in_combat())
         return;
 
-    ecs_world_.tick();
+    ecs_engine_.tick();
 
     std::string msgs;
     msgs += ai_sys_->output;
@@ -309,7 +309,7 @@ void Game::post_action_tick() {
 
     cleanup_dead();
 
-    auto* essence = ecs_world_.registry().getComponent<PrimevalEssence>(player_);
+    auto* essence = ecs_engine_.registry().getComponent<PrimevalEssence>(player_);
     if (essence->current == 0) {
         essence->depleted_turns++;
         if (essence->depleted_turns >= 3) {
@@ -325,7 +325,7 @@ void Game::post_action_tick() {
 }
 
 void Game::cleanup_dead() {
-    auto& reg = ecs_world_.registry();
+    auto& reg = ecs_engine_.registry();
     auto* player_hp = reg.getComponent<Health>(player_);
     if (player_hp->hp <= 0) {
         status_msg_ = "You have fallen. Your Gu worms scatter into the void. DEFEAT.";
@@ -347,7 +347,7 @@ void Game::cleanup_dead() {
 }
 
 bool Game::check_win() {
-    auto& reg = ecs_world_.registry();
+    auto& reg = ecs_engine_.registry();
     auto* pos = reg.getComponent<Position>(player_);
     Map* map = game_world_.get_map(pos->map_id);
     if (!map->is_exit)
@@ -363,7 +363,7 @@ bool Game::check_win() {
 }
 
 bool Game::is_in_combat() const {
-    auto& reg = ecs_world_.registry();
+    auto& reg = ecs_engine_.registry();
     auto* pos = reg.getComponent<Position>(player_);
     Map* map = game_world_.get_map(pos->map_id);
     for (Entity e : map->entities)
@@ -373,7 +373,7 @@ bool Game::is_in_combat() const {
 }
 
 void Game::destroy_entity(Entity e) {
-    auto& reg = ecs_world_.registry();
+    auto& reg = ecs_engine_.registry();
     auto* pos = reg.getComponent<Position>(e);
     if (pos)
         game_world_.remove_entity(pos->map_id, e);
@@ -386,5 +386,5 @@ void Game::destroy_entity(Entity e) {
     reg.removeComponent<Name>(e);
     reg.removeComponent<Position>(e);
     reg.removeComponent<PrimevalEssence>(e);
-    ecs_world_.entities().destroyEntity(e);
+    ecs_engine_.entities().destroyEntity(e);
 }

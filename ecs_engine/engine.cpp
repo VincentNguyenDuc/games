@@ -1,6 +1,6 @@
-#include "world.hpp"
+#include "engine.hpp"
 
-void World::tick() {
+void Engine::tick() {
     for (const auto& wave : scheduler_.get_waves()) {
         for (int idx : wave) {
             pool_.submit([this, idx] { systems_[idx]->update(registry_, cmd_buffers_[idx]); });

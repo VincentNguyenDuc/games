@@ -1,4 +1,4 @@
-#include "detail/system.hpp"
+#include "system.hpp"
 
 static bool conflicts(const ISystem& a, const ISystem& b) {
     for (const auto& w : a.writes) {
