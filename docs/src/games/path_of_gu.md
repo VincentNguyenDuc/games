@@ -95,17 +95,19 @@ Worms are the core resource. Each has a type, essence cost, effect value, and ra
 
 ## Turn Structure
 
-Every time the player takes an action (attack, heal, or skip), a full tick runs:
+Every time the player takes an action (attack, heal, or skip), a full tick runs via `Engine::tick()`:
 
-1. **AI phase** — each enemy on the current map decides independently (parallel `std::async`):
-   - If out of attack range → move toward player
-   - If in range → pick best worm or raw attack based on HP and behavior type
-2. **Movement phase** — all stamped `MoveIntent` components are resolved (collision, door transitions)
-3. **Self-effect phase** — heals and buffs are applied
-4. **Attack phase** — damage and essence drain effects are applied
-5. **Cleanup** — dead entities are removed; loot is rolled and dropped
+| Wave | Systems (run in parallel within wave) | What happens |
+|---|---|---|
+| 1 | `AiTickSystem` | Each enemy decides its action; stamps `MoveIntentComponent` or attack-effect components |
+| 2 | `MoveTickSystem`, `SelfEffectTickSystem` | Movement intents resolved + self-heals/buffs applied concurrently |
+| 3 | `AttackEffectTickSystem` | Damage and essence-drain effects applied |
+
+After all waves: dead entities are removed and loot is rolled (`cleanup_dead`).
 
 Movement (arrow keys) does **not** trigger a full tick — only the player moves.
+
+Wave 2 is the parallel wave: `MoveTickSystem` and `SelfEffectTickSystem` write to disjoint component types (`Position`/`MoveIntentComponent` vs `Health`/`SelfEffectComponent`) so the scheduler places them in the same wave and the thread pool runs them concurrently.
 
 ## ECS Components
 
@@ -123,3 +125,29 @@ Movement (arrow keys) does **not** trigger a full tick — only the player moves
 | `MoveIntentComponent` | *Transient* — pending movement this tick |
 | `AttackEffectComponent` | *Transient* — pending attack effect this tick |
 | `SelfEffectComponent` | *Transient* — pending self-heal/buff this tick |
+
+---
+
+## Code Layout
+
+```
+path_of_gu/
+  include/
+    systems/        ← ISystem classes (recurring per-tick behavior)
+      ai_system.hpp
+      movement_system.hpp
+      effect_system.hpp
+    actions/        ← one-shot player/game commands
+      combat.hpp    ← activate_worm()
+      loot.hpp      ← pickup_worm(), drop_worm(), process_death()
+    rendering/      ← pure read, UI only
+      render.hpp    ← render()
+    components/     ← plain data structs
+    world/          ← Game world (map graph) + Map
+    items/          ← GuWorm definitions and database
+  src/
+    systems/        ← ISystem implementations
+    actions/        ← combat and loot implementations
+    rendering/      ← FTXUI render implementation
+    game.cpp        ← Game class: wires Engine, systems, and input loop
+```
