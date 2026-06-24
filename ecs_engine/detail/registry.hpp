@@ -61,12 +61,22 @@ struct SparseSetComponentStore : IComponentStore {
 class EntityComponentRegistry {
     std::unordered_map<ComponentType, std::unique_ptr<IComponentStore>> stores_;
 
+    // Mutating path: creates the store if absent. Call only from single-threaded context.
     template <typename T>
     SparseSetComponentStore<T>& store() {
         auto& ptr = stores_[std::type_index(typeid(T))];
         if (!ptr)
             ptr = std::make_unique<SparseSetComponentStore<T>>();
         return *static_cast<SparseSetComponentStore<T>*>(ptr.get());
+    }
+
+    // Read-only path: returns nullptr if absent. Safe to call from parallel systems.
+    template <typename T>
+    SparseSetComponentStore<T>* find_store() const {
+        auto it = stores_.find(std::type_index(typeid(T)));
+        if (it == stores_.end())
+            return nullptr;
+        return static_cast<SparseSetComponentStore<T>*>(it->second.get());
     }
 
 public:
@@ -76,8 +86,9 @@ public:
     }
 
     template <typename T>
-    T* getComponent(Entity entity) {
-        return store<T>().get(entity);
+    T* getComponent(Entity entity) const {
+        auto* s = find_store<T>();
+        return s ? s->get(entity) : nullptr;
     }
 
     template <typename T>
@@ -87,7 +98,8 @@ public:
 
     // Returns a snapshot of entities that have T — safe to iterate while removing.
     template <typename T>
-    std::vector<Entity> view() {
-        return store<T>().entities;
+    std::vector<Entity> view() const {
+        auto* s = find_store<T>();
+        return s ? s->entities : std::vector<Entity>{};
     }
 };

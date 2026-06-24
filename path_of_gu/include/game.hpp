@@ -4,6 +4,9 @@
 #include "ecs.hpp"
 #include "events/events.hpp"
 #include "items/gu_worm_db.hpp"
+#include "systems/ai_system.hpp"
+#include "systems/effect_system.hpp"
+#include "systems/movement_system.hpp"
 #include "world/world.hpp"
 
 #include <ftxui/component/screen_interactive.hpp>
@@ -11,13 +14,18 @@
 #include <string>
 
 class Game {
-    std::shared_ptr<EntityComponentRegistry> reg_;
-    std::unique_ptr<World> world_;
+    GameWorld game_world_;
+    World ecs_world_;
     std::unique_ptr<IGuWormDatabase> db_;
-    EntityManager entity_manager_;
     Entity player_;
     ftxui::ScreenInteractive screen_ = ftxui::ScreenInteractive::Fullscreen();
     std::string status_msg_;
+
+    // Non-owning — systems are owned by ecs_world_.
+    AiTickSystem* ai_sys_{nullptr};
+    MoveTickSystem* move_sys_{nullptr};
+    SelfEffectTickSystem* self_eff_sys_{nullptr};
+    AttackEffectTickSystem* atk_eff_sys_{nullptr};
 
 public:
     Game();

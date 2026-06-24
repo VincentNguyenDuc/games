@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include "actions/combat.hpp"
 #include "components/aperture.hpp"
 #include "components/health.hpp"
 #include "components/name.hpp"
@@ -8,7 +9,6 @@
 #include "components/stats.hpp"
 #include "ecs.hpp"
 #include "items/gu_worm.hpp"
-#include "systems/combat_system.hpp"
 #include "systems/effect_system.hpp"
 
 #include <memory>
@@ -79,7 +79,7 @@ TEST_CASE("offensive worm deals damage and costs essence", "[combat]") {
     auto result = activate_worm(reg, player, enemy, 0);
     REQUIRE(result.success);
     REQUIRE(reg.getComponent<PrimevalEssence>(player)->current == 40); // essence spent immediately
-    resolve_attack_effects(reg);
+    AttackEffectTickSystem::resolve(reg);
     REQUIRE(reg.getComponent<Health>(enemy)->hp < 30);
 }
 
@@ -94,7 +94,7 @@ TEST_CASE("offensive worm respects enemy defense", "[combat]") {
     );
 
     activate_worm(reg, player, enemy, 0);
-    resolve_attack_effects(reg);
+    AttackEffectTickSystem::resolve(reg);
     // damage = max(1, 20 - 15) = 5
     REQUIRE(reg.getComponent<Health>(enemy)->hp == 25);
 }
@@ -110,7 +110,7 @@ TEST_CASE("high defense still lets minimum 1 damage through", "[combat]") {
     );
 
     activate_worm(reg, player, enemy, 0);
-    resolve_attack_effects(reg);
+    AttackEffectTickSystem::resolve(reg);
     REQUIRE(reg.getComponent<Health>(enemy)->hp == 29); // 1 damage minimum
 }
 
@@ -128,7 +128,7 @@ TEST_CASE("attack fails when essence is insufficient", "[combat]") {
 
     auto result = activate_worm(reg, player, enemy, 0);
     REQUIRE(!result.success);
-    resolve_attack_effects(reg);
+    AttackEffectTickSystem::resolve(reg);
     REQUIRE(reg.getComponent<Health>(enemy)->hp == 30);               // no damage
     REQUIRE(reg.getComponent<PrimevalEssence>(player)->current == 5); // no spend
 }
@@ -172,7 +172,7 @@ TEST_CASE("recovery worm heals the user", "[combat]") {
 
     auto result = activate_worm(reg, player, player, 0); // self-target
     REQUIRE(result.success);
-    resolve_self_effects(reg);
+    SelfEffectTickSystem::resolve(reg);
     REQUIRE(reg.getComponent<Health>(player)->hp == 90); // healed 30
 }
 
@@ -187,7 +187,7 @@ TEST_CASE("recovery worm does not exceed max HP", "[combat]") {
     );
 
     activate_worm(reg, player, player, 0);
-    resolve_self_effects(reg);
+    SelfEffectTickSystem::resolve(reg);
     REQUIRE(reg.getComponent<Health>(player)->hp == 100); // capped at max
 }
 
@@ -204,7 +204,7 @@ TEST_CASE("enemy HP drops to zero after lethal attack", "[combat]") {
     );
 
     activate_worm(reg, player, enemy, 0);
-    resolve_attack_effects(reg);
+    AttackEffectTickSystem::resolve(reg);
     REQUIRE(reg.getComponent<Health>(enemy)->hp <= 0);
 }
 
@@ -219,7 +219,7 @@ TEST_CASE("enemy survives a weak attack", "[combat]") {
     );
 
     activate_worm(reg, player, enemy, 0);
-    resolve_attack_effects(reg);
+    AttackEffectTickSystem::resolve(reg);
     REQUIRE(reg.getComponent<Health>(enemy)->hp > 0);
 }
 
@@ -237,7 +237,7 @@ TEST_CASE("enemy can activate worm against player symmetrically", "[combat]") {
 
     auto result = activate_worm(reg, enemy, player, 0);
     REQUIRE(result.success);
-    resolve_attack_effects(reg);
+    AttackEffectTickSystem::resolve(reg);
     REQUIRE(reg.getComponent<Health>(player)->hp < 100); // player took damage
 }
 
@@ -255,7 +255,7 @@ TEST_CASE("melee worm hits adjacent enemy (distance 1)", "[combat]") {
 
     auto result = activate_worm(reg, player, enemy, 0);
     REQUIRE(result.success);
-    resolve_attack_effects(reg);
+    AttackEffectTickSystem::resolve(reg);
     REQUIRE(reg.getComponent<Health>(enemy)->hp < 30);
 }
 
@@ -287,7 +287,7 @@ TEST_CASE("ranged worm hits enemy at distance within its range", "[combat]") {
 
     auto result = activate_worm(reg, player, enemy, 0);
     REQUIRE(result.success);
-    resolve_attack_effects(reg);
+    AttackEffectTickSystem::resolve(reg);
     REQUIRE(reg.getComponent<Health>(enemy)->hp < 30);
 }
 
@@ -317,6 +317,6 @@ TEST_CASE("recovery worm ignores distance (range 0 = self only)", "[combat]") {
 
     auto result = activate_worm(reg, player, player, 0);
     REQUIRE(result.success);
-    resolve_self_effects(reg);
+    SelfEffectTickSystem::resolve(reg);
     REQUIRE(reg.getComponent<Health>(player)->hp == 80); // healed 20
 }

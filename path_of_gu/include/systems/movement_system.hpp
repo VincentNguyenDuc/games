@@ -5,7 +5,13 @@
 
 #include <string>
 
-// Resolves all pending MoveIntentComponents: applies movement, handles door
-// transitions, enforces wall and entity collision. Works the same for any entity.
-// Returns messages (door transitions, etc.).
-std::string resolve_moves(EntityComponentRegistry& reg, World& world);
+struct MoveTickSystem : ISystem {
+    GameWorld& game_world;
+    std::string output;
+
+    explicit MoveTickSystem(GameWorld& gw);
+    void update(EntityComponentRegistry& reg, CommandBuffer&) override;
+
+    // Callable standalone for immediate player movement outside the tick loop.
+    static std::string resolve(EntityComponentRegistry& reg, GameWorld& world);
+};

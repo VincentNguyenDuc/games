@@ -7,5 +7,5 @@
 #include <string>
 
 ftxui::Element render(
-    EntityComponentRegistry& reg, World& world, Entity player, const std::string& status_msg
+    EntityComponentRegistry& reg, GameWorld& world, Entity player, const std::string& status_msg
 );

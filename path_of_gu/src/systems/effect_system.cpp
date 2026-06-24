@@ -9,7 +9,15 @@
 
 #include <fmt/format.h>
 
-std::string resolve_self_effects(EntityComponentRegistry& reg) {
+SelfEffectTickSystem::SelfEffectTickSystem() {
+    reads = {
+        ComponentType(typeid(SelfEffectComponent)),
+        ComponentType(typeid(Health)),
+        ComponentType(typeid(Name))};
+    writes = {ComponentType(typeid(Health)), ComponentType(typeid(SelfEffectComponent))};
+}
+
+std::string SelfEffectTickSystem::resolve(EntityComponentRegistry& reg) {
     std::string out;
 
     for (Entity e : reg.view<SelfEffectComponent>()) {
@@ -47,7 +55,26 @@ std::string resolve_self_effects(EntityComponentRegistry& reg) {
     return out;
 }
 
-std::string resolve_attack_effects(EntityComponentRegistry& reg) {
+void SelfEffectTickSystem::update(EntityComponentRegistry& reg, CommandBuffer&) {
+    output = resolve(reg);
+}
+
+AttackEffectTickSystem::AttackEffectTickSystem() {
+    reads = {
+        ComponentType(typeid(AttackEffectComponent)),
+        ComponentType(typeid(Health)),
+        ComponentType(typeid(Stats)),
+        ComponentType(typeid(PrimevalEssence)),
+        ComponentType(typeid(Name)),
+    };
+    writes = {
+        ComponentType(typeid(Health)),
+        ComponentType(typeid(PrimevalEssence)),
+        ComponentType(typeid(AttackEffectComponent)),
+    };
+}
+
+std::string AttackEffectTickSystem::resolve(EntityComponentRegistry& reg) {
     std::string out;
 
     for (Entity attacker : reg.view<AttackEffectComponent>()) {
@@ -85,7 +112,6 @@ std::string resolve_attack_effects(EntityComponentRegistry& reg) {
             break;
         }
         case GuWormType::Support: {
-            // Essence disruption (Schemer raw attack)
             if (!tgt_ess)
                 break;
             tgt_ess->current = std::max(0, tgt_ess->current - eff->effect_value);
@@ -102,4 +128,8 @@ std::string resolve_attack_effects(EntityComponentRegistry& reg) {
     }
 
     return out;
+}
+
+void AttackEffectTickSystem::update(EntityComponentRegistry& reg, CommandBuffer&) {
+    output = resolve(reg);
 }

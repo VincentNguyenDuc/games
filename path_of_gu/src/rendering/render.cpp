@@ -1,4 +1,4 @@
-#include "systems/render_system.hpp"
+#include "rendering/render.hpp"
 
 #include "components/aperture.hpp"
 #include "components/cultivation_rank.hpp"
@@ -27,7 +27,6 @@ static const char* worm_type_label(GuWormType t) {
     return "???";
 }
 
-// One grid cell: 2 chars wide, coloured by type / occupant.
 static Element cell_element(int cell_type, char occupant) {
     std::string s{occupant, ' '};
     switch (occupant) {
@@ -42,9 +41,9 @@ static Element cell_element(int cell_type, char occupant) {
         return text(s) | color(Color::Red) | bold;
 
     switch (cell_type) {
-    case 1 /*Wall*/:
+    case 1:
         return text(s) | color(Color::GrayDark);
-    case 2 /*Door*/:
+    case 2:
         return text(s) | color(Color::Yellow) | bold;
     default:
         return text(s) | color(Color::BlueLight);
@@ -52,9 +51,8 @@ static Element cell_element(int cell_type, char occupant) {
 }
 
 static Element build_grid(
-    EntityComponentRegistry& reg, World& world, Entity player, Map* map, const Position* pos
+    EntityComponentRegistry& reg, GameWorld& world, Entity player, Map* map, const Position* pos
 ) {
-    // Build display buffer
     char display[10][10];
     for (int y = 0; y < 10; ++y)
         for (int x = 0; x < 10; ++x) {
@@ -71,7 +69,6 @@ static Element build_grid(
             }
         }
 
-    // Overlay enemies
     int num = 1;
     for (Entity e : map->entities) {
         if (e == player)
@@ -83,7 +80,6 @@ static Element build_grid(
     }
     display[pos->y][pos->x] = '@';
 
-    // Build FTXUI element (vbox of hboxes)
     Elements rows;
     for (int y = 0; y < 10; ++y) {
         Elements row;
@@ -96,8 +92,6 @@ static Element build_grid(
 
 static Element build_info_panel(EntityComponentRegistry& reg, Map* map, Entity player) {
     Elements lines;
-
-    // Enemies
     lines.push_back(text("Enemies:") | bold);
     int num = 1;
     bool any_enemy = false;
@@ -121,8 +115,6 @@ static Element build_info_panel(EntityComponentRegistry& reg, Map* map, Entity p
         lines.push_back(text("  (none)") | color(Color::GrayDark));
 
     lines.push_back(separator());
-
-    // Dropped worms
     lines.push_back(text("Worms on floor:") | bold);
     if (map->dropped_worms.empty()) {
         lines.push_back(text("  (none)") | color(Color::GrayDark));
@@ -138,7 +130,6 @@ static Element build_info_panel(EntityComponentRegistry& reg, Map* map, Entity p
             }));
         }
     }
-
     return vbox(std::move(lines)) | border | flex;
 }
 
@@ -185,16 +176,11 @@ static Element build_stats_panel(EntityComponentRegistry& reg, Entity player, co
             text("  range " + std::to_string(def.range)) | color(Color::GrayLight),
         }));
     }
-
-    return vbox({
-               hbox(std::move(stat_line)),
-               vbox(std::move(worm_lines)),
-           }) |
-           border;
+    return vbox({hbox(std::move(stat_line)), vbox(std::move(worm_lines))}) | border;
 }
 
 ftxui::Element render(
-    EntityComponentRegistry& reg, World& world, Entity player, const std::string& status_msg
+    EntityComponentRegistry& reg, GameWorld& world, Entity player, const std::string& status_msg
 ) {
     auto* pos = reg.getComponent<Position>(player);
     Map* map = world.get_map(pos->map_id);
@@ -203,10 +189,6 @@ ftxui::Element render(
         text(map->name) | bold | color(Color::GreenLight) | hcenter,
         text(map->description) | color(Color::GrayLight) | hcenter,
     });
-
-    auto grid = build_grid(reg, world, player, map, pos);
-    auto info_panel = build_info_panel(reg, map, player);
-    auto stats = build_stats_panel(reg, player, pos);
 
     auto hint = text("↑↓←→ move  ·  attack N  ·  use N (heal/buff)  ·  pickup N  ·  drop N  ·  "
                      "space skip  ·  quit") |
@@ -217,8 +199,8 @@ ftxui::Element render(
     return vbox({
         header,
         separator(),
-        hbox({grid, info_panel}),
-        stats,
+        hbox({build_grid(reg, world, player, map, pos), build_info_panel(reg, map, player)}),
+        build_stats_panel(reg, player, pos),
         separator(),
         status_line,
         hint,

@@ -6,14 +6,14 @@
 #include <unordered_map>
 #include <utility>
 
-class World {
+class GameWorld {
     std::unordered_map<MapId, std::unique_ptr<Map>> maps_;
     MapId next_id_ = 0;
 
 public:
-    World(); // generates the Grotto-Heaven dungeon layout
+    GameWorld(); // generates the Grotto-Heaven dungeon layout
 
-    Map* get_map(MapId id);
+    Map* get_map(MapId id) const;
     MapId entrance_id() const { return 0; }
 
     void add_entity(MapId map_id, Entity entity);

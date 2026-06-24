@@ -5,9 +5,9 @@ add_executable(path_of_gu-tests
     test_combat.cpp
     test_loot.cpp
     ../src/items/gu_worm_db.cpp
-    ../src/systems/combat_system.cpp
+    ../src/actions/combat.cpp
+    ../src/actions/loot.cpp
     ../src/systems/effect_system.cpp
-    ../src/systems/loot_system.cpp
     ../src/world/world.cpp
 )
 target_include_directories(path_of_gu-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../include)

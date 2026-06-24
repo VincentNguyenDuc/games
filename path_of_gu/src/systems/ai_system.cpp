@@ -1,5 +1,5 @@
 #include "systems/ai_system.hpp"
-#include "systems/combat_system.hpp"
+#include "actions/combat.hpp"
 
 #include "components/ai_behavior.hpp"
 #include "components/aperture.hpp"
@@ -9,6 +9,7 @@
 #include "components/name.hpp"
 #include "components/position.hpp"
 #include "components/primeval_essence.hpp"
+#include "components/self_effect.hpp"
 #include "components/stats.hpp"
 #include "items/gu_worm.hpp"
 #include "utility.hpp"
@@ -18,7 +19,14 @@
 #include <random>
 #include <vector>
 
-// Stamps a movement intent toward `to`; resolve_moves() will apply it with slide fallback.
+struct AIDecision {
+    Entity entity;
+    int hp_damage = 0;
+    int essence_damage = 0;
+    int worm_slot = -1; // -1 = raw stat attack; >= 0 = aperture slot
+    bool heal_self = false;
+};
+
 static void move_toward(
     EntityComponentRegistry& reg, Entity e, const Position& from, const Position& to
 ) {
@@ -27,8 +35,6 @@ static void move_toward(
     reg.addComponent(e, MoveIntentComponent{dx, dy, /*allow_slide=*/true});
 }
 
-// Snapshot of an enemy, safe to copy for async use.
-// GuWorm::def is an immutable shared_ptr flyweight.
 struct EnemySnapshot {
     Entity entity;
     BehaviorType behavior;
@@ -42,7 +48,6 @@ static AIDecision decide(EnemySnapshot ctx) {
     float hp_ratio = (float)ctx.hp / (float)std::max(1, ctx.max_hp);
     float heal_threshold = (ctx.behavior == BehaviorType::Wild) ? 0.30f : 0.50f;
 
-    // Try recovery worm when critically low on HP
     if (hp_ratio < heal_threshold) {
         for (int i = 0; i < (int)ctx.worms.size(); ++i) {
             const auto& def = *ctx.worms[i].def;
@@ -51,7 +56,6 @@ static AIDecision decide(EnemySnapshot ctx) {
         }
     }
 
-    // Schemers prefer defensive worms when moderately hurt
     if (ctx.behavior == BehaviorType::Schemer && hp_ratio < 0.70f) {
         for (int i = 0; i < (int)ctx.worms.size(); ++i) {
             const auto& def = *ctx.worms[i].def;
@@ -60,7 +64,6 @@ static AIDecision decide(EnemySnapshot ctx) {
         }
     }
 
-    // Pick first usable offensive or defensive worm
     for (int i = 0; i < (int)ctx.worms.size(); ++i) {
         const auto& def = *ctx.worms[i].def;
         if ((def.type == GuWormType::Offensive || def.type == GuWormType::Defensive) &&
@@ -68,23 +71,41 @@ static AIDecision decide(EnemySnapshot ctx) {
             return {ctx.entity, 0, 0, i, false};
     }
 
-    // No usable worm — raw stat attack
     int dmg = random_variance(ctx.base_attack);
     if (ctx.behavior == BehaviorType::Guardian) {
         static std::mt19937 gen(std::random_device{}());
         std::uniform_real_distribution<float> p(0.0f, 1.0f);
         if (p(gen) < 0.30f)
-            dmg *= 2; // power strike
+            dmg *= 2;
     }
     int ess_drain =
         (ctx.behavior == BehaviorType::Schemer) ? random_variance(ctx.base_attack / 2) : 0;
     return {ctx.entity, dmg, ess_drain, -1, false};
 }
 
-std::string ai_tick(EntityComponentRegistry& reg, World& world, Entity player) {
-    auto* player_pos = reg.getComponent<Position>(player);
+AiTickSystem::AiTickSystem(GameWorld& gw, Entity p)
+    : game_world(gw)
+    , player(p) {
+    reads = std::vector<ComponentType>{
+        ComponentType(typeid(Position)),
+        ComponentType(typeid(AIBehavior)),
+        ComponentType(typeid(Health)),
+        ComponentType(typeid(Stats)),
+        ComponentType(typeid(Aperture)),
+        ComponentType(typeid(PrimevalEssence)),
+        ComponentType(typeid(Name)),
+    };
+    writes = std::vector<ComponentType>{
+        ComponentType(typeid(MoveIntentComponent)),
+        ComponentType(typeid(SelfEffectComponent)),
+        ComponentType(typeid(AttackEffectComponent)),
+        ComponentType(typeid(PrimevalEssence)),
+    };
+}
 
-    Map* map = world.get_map(player_pos->map_id);
+void AiTickSystem::update(EntityComponentRegistry& reg, CommandBuffer&) {
+    auto* player_pos = reg.getComponent<Position>(player);
+    Map* map = game_world.get_map(player_pos->map_id);
 
     std::string messages;
     std::vector<std::pair<Entity, std::future<AIDecision>>> pending;
@@ -104,7 +125,6 @@ std::string ai_tick(EntityComponentRegistry& reg, World& world, Entity player) {
         if (!ai || !hp || hp->hp <= 0 || !stats || !epos)
             continue;
 
-        // Small regen so enemies don't run permanently dry
         if (ess && ess->current < ess->max)
             ess->current = std::min(ess->max, ess->current + 5);
 
@@ -127,22 +147,17 @@ std::string ai_tick(EntityComponentRegistry& reg, World& world, Entity player) {
         }
     }
 
-    // Apply decisions sequentially (no registry races).
-    // Stamp effect components — resolve_*_effects() applies them afterward.
     for (auto& [e, f] : pending) {
         AIDecision d = f.get();
 
         if (d.worm_slot >= 0) {
-            // Worm activation: heal self or attack player
             Entity effect_target = d.heal_self ? d.entity : player;
             activate_worm(reg, d.entity, effect_target, d.worm_slot);
         } else {
-            // Raw stat attack → stamp AttackEffectComponent directly
             if (d.hp_damage > 0)
                 reg.addComponent(
                     d.entity, AttackEffectComponent{player, d.hp_damage, {}, GuWormType::Offensive}
                 );
-            // Schemer essence drain → Support type attack effect
             if (d.essence_damage > 0)
                 reg.addComponent(
                     d.entity,
@@ -151,5 +166,5 @@ std::string ai_tick(EntityComponentRegistry& reg, World& world, Entity player) {
         }
     }
 
-    return messages; // movement messages only; combat messages come from effect resolution
+    output = messages;
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "command_buffer.hpp"
 #include "registry.hpp"
 #include <vector>
 
@@ -7,7 +8,7 @@ struct ISystem {
     std::vector<ComponentType> reads;
     std::vector<ComponentType> writes;
     virtual ~ISystem() = default;
-    virtual void update(EntityComponentRegistry&) = 0;
+    virtual void update(EntityComponentRegistry&, CommandBuffer&) = 0;
 };
 
 struct SystemNode {

@@ -2,9 +2,10 @@
 
 #include "ecs.hpp"
 
-// Minimal concrete system — never actually called, just carries access metadata.
+#include <atomic>
+
 struct StubSystem : ISystem {
-    void update(EntityComponentRegistry&) override {}
+    void update(EntityComponentRegistry&, CommandBuffer&) override {}
 };
 
 static StubSystem* make(std::vector<ComponentType> reads, std::vector<ComponentType> writes) {
@@ -20,6 +21,12 @@ struct A {};
 struct B {};
 struct C {};
 struct D {};
+struct Position {
+    float x, y;
+};
+struct Velocity {
+    float dx, dy;
+};
 
 // ── Waves shape helpers ───────────────────────────────────────────────────────
 
@@ -90,7 +97,7 @@ TEST_CASE("Two writers of the same component produce two waves", "[scheduler]") 
 TEST_CASE("Reader then writer produces two waves", "[scheduler]") {
     SystemsScheduler sched;
     sched.add_system(make({CT(typeid(A))}, {})); // reads A  (registered first)
-    sched.add_system(make({}, {CT(typeid(A))})); // writes A (registered second — depends on reader)
+    sched.add_system(make({}, {CT(typeid(A))})); // writes A (registered second)
     sched.build();
     REQUIRE(wave_count(sched) == 2);
 }
@@ -98,7 +105,6 @@ TEST_CASE("Reader then writer produces two waves", "[scheduler]") {
 // ── Chains ────────────────────────────────────────────────────────────────────
 
 TEST_CASE("Linear chain A->B->C produces three waves", "[scheduler]") {
-    // S0 writes A, S1 reads A + writes B, S2 reads B
     SystemsScheduler sched;
     sched.add_system(make({}, {CT(typeid(A))}));
     sched.add_system(make({CT(typeid(A))}, {CT(typeid(B))}));
@@ -113,10 +119,6 @@ TEST_CASE("Linear chain A->B->C produces three waves", "[scheduler]") {
 // ── Diamond ───────────────────────────────────────────────────────────────────
 
 TEST_CASE("Diamond: independent middle systems run in parallel", "[scheduler]") {
-    // S0 writes A
-    // S1 reads A, writes B   (depends on S0)
-    // S2 reads A, writes C   (depends on S0)
-    // S3 reads B + C          (depends on S1 and S2)
     SystemsScheduler sched;
     sched.add_system(make({}, {CT(typeid(A))}));                // S0
     sched.add_system(make({CT(typeid(A))}, {CT(typeid(B))}));   // S1
@@ -127,4 +129,62 @@ TEST_CASE("Diamond: independent middle systems run in parallel", "[scheduler]") 
     REQUIRE(wave_size(sched, 0) == 1); // S0
     REQUIRE(wave_size(sched, 1) == 2); // S1 and S2 in parallel
     REQUIRE(wave_size(sched, 2) == 1); // S3
+}
+
+// ── World integration ─────────────────────────────────────────────────────────
+
+struct CountingSystem : ISystem {
+    std::atomic<int>* counter;
+    explicit CountingSystem(std::atomic<int>* c)
+        : counter(c) {
+        writes = {CT(typeid(Position))};
+    }
+    void update(EntityComponentRegistry& reg, CommandBuffer&) override {
+        for (Entity e : reg.view<Position>()) {
+            auto* p = reg.getComponent<Position>(e);
+            if (p) {
+                p->x += 1.0f;
+            }
+        }
+        ++(*counter);
+    }
+};
+
+TEST_CASE("World::tick runs all systems and mutates components", "[world]") {
+    std::atomic<int> ticks{0};
+    World world;
+    world.add_system<CountingSystem>(&ticks);
+    world.build();
+
+    Entity e = world.entities().createEntity();
+    world.registry().addComponent(e, Position{0.0f, 0.0f});
+
+    world.tick();
+    world.tick();
+
+    REQUIRE(ticks.load() == 2);
+    REQUIRE(world.registry().getComponent<Position>(e)->x == 2.0f);
+}
+
+TEST_CASE("CommandBuffer deferred add_component is visible after flush", "[world]") {
+    struct SpawnSystem : ISystem {
+        Entity target;
+        explicit SpawnSystem(Entity e)
+            : target(e) {
+            writes = {CT(typeid(Velocity))};
+        }
+        void update(EntityComponentRegistry&, CommandBuffer& cmd) override {
+            cmd.add_component(target, Velocity{3.0f, 4.0f});
+        }
+    };
+
+    World world;
+    Entity e = world.entities().createEntity();
+    world.add_system<SpawnSystem>(e);
+    world.build();
+
+    REQUIRE(world.registry().getComponent<Velocity>(e) == nullptr);
+    world.tick(); // SpawnSystem queues the add; flush applies it
+    REQUIRE(world.registry().getComponent<Velocity>(e) != nullptr);
+    REQUIRE(world.registry().getComponent<Velocity>(e)->dx == 3.0f);
 }

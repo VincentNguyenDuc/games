@@ -1,4 +1,4 @@
-#include "systems/combat_system.hpp"
+#include "actions/combat.hpp"
 
 #include "components/aperture.hpp"
 #include "components/attack_effect.hpp"
@@ -23,7 +23,6 @@ ActivationResult activate_worm(
     const auto& worm = aperture->worms[worm_slot];
     const auto& def = *worm.def;
 
-    // range == 0 → self-targeting; skip distance check entirely.
     if (def.range > 0) {
         auto* spos = reg.getComponent<Position>(source);
         auto* tpos = reg.getComponent<Position>(target);

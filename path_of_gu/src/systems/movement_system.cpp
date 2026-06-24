@@ -6,7 +6,16 @@
 
 #include <fmt/format.h>
 
-std::string resolve_moves(EntityComponentRegistry& reg, World& world) {
+MoveTickSystem::MoveTickSystem(GameWorld& gw)
+    : game_world(gw) {
+    reads = {
+        ComponentType(typeid(MoveIntentComponent)),
+        ComponentType(typeid(Position)),
+        ComponentType(typeid(Name))};
+    writes = {ComponentType(typeid(Position)), ComponentType(typeid(MoveIntentComponent))};
+}
+
+std::string MoveTickSystem::resolve(EntityComponentRegistry& reg, GameWorld& world) {
     std::string out;
 
     for (Entity e : reg.view<MoveIntentComponent>()) {
@@ -20,7 +29,6 @@ std::string resolve_moves(EntityComponentRegistry& reg, World& world) {
 
         Map* map = world.get_map(pos->map_id);
 
-        // Returns true and applies the move if the cell at (pos+delta) is reachable.
         auto try_move = [&](int dx, int dy) -> bool {
             if (dx == 0 && dy == 0)
                 return false;
@@ -47,7 +55,6 @@ std::string resolve_moves(EntityComponentRegistry& reg, World& world) {
             if (cell != Cell::Empty)
                 return false;
 
-            // Block if another entity already occupies the target cell.
             for (Entity other : map->entities) {
                 if (other == e)
                     continue;
@@ -62,9 +69,7 @@ std::string resolve_moves(EntityComponentRegistry& reg, World& world) {
         };
 
         bool moved = try_move(intent->dx, intent->dy);
-
         if (!moved && intent->allow_slide) {
-            // Try horizontal then vertical fallback (mirrors diagonal-prefer pathfinding).
             if (!try_move(intent->dx, 0))
                 try_move(0, intent->dy);
         }
@@ -73,4 +78,8 @@ std::string resolve_moves(EntityComponentRegistry& reg, World& world) {
     }
 
     return out;
+}
+
+void MoveTickSystem::update(EntityComponentRegistry& reg, CommandBuffer&) {
+    output = resolve(reg, game_world);
 }

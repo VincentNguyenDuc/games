@@ -4,8 +4,21 @@
 
 #include <string>
 
-// Applies all pending SelfEffectComponents (heals, buffs) and removes them.
-std::string resolve_self_effects(EntityComponentRegistry& reg);
+struct SelfEffectTickSystem : ISystem {
+    std::string output;
 
-// Applies all pending AttackEffectComponents (damage, essence drain) and removes them.
-std::string resolve_attack_effects(EntityComponentRegistry& reg);
+    SelfEffectTickSystem();
+    void update(EntityComponentRegistry& reg, CommandBuffer&) override;
+
+    // Callable standalone (e.g. in tests or single-step resolution).
+    static std::string resolve(EntityComponentRegistry& reg);
+};
+
+struct AttackEffectTickSystem : ISystem {
+    std::string output;
+
+    AttackEffectTickSystem();
+    void update(EntityComponentRegistry& reg, CommandBuffer&) override;
+
+    static std::string resolve(EntityComponentRegistry& reg);
+};
