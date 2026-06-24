@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ecs/entity.hpp"
+#include "ecs.hpp"
 #include "items/gu_worm.hpp"
 
 #include <string>

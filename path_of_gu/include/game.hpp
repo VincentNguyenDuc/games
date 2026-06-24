@@ -1,8 +1,7 @@
 #pragma once
 
 #include "components/ai_behavior.hpp"
-#include "ecs/entity.hpp"
-#include "ecs/registry.hpp"
+#include "ecs.hpp"
 #include "events/events.hpp"
 #include "items/gu_worm_db.hpp"
 #include "world/world.hpp"

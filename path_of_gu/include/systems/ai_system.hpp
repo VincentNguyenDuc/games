@@ -1,7 +1,6 @@
 #pragma once
 
-#include "ecs/entity.hpp"
-#include "ecs/registry.hpp"
+#include "ecs.hpp"
 #include "world/world.hpp"
 
 #include <vector>

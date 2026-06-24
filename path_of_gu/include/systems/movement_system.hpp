@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ecs/registry.hpp"
+#include "ecs.hpp"
 #include "world/world.hpp"
 
 #include <string>

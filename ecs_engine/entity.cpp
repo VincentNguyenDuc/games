@@ -1,4 +1,4 @@
-#include "ecs/entity.hpp"
+#include "detail/entity.hpp"
 #include <spdlog/spdlog.h>
 
 EntityManager::EntityManager() {}

@@ -6,6 +6,7 @@ add_executable(leah_village
 )
 target_include_directories(leah_village PRIVATE include)
 target_link_libraries(leah_village PRIVATE
+    ecs_engine
     fmt::fmt
     spdlog::spdlog
     ftxui::screen

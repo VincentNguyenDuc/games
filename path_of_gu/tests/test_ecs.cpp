@@ -1,7 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "ecs/entity.hpp"
-#include "ecs/registry.hpp"
+#include "ecs.hpp"
 
 struct Pos {
     float x, y;

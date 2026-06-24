@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "events/event_queue.hpp"
+#include "ecs.hpp"
 
 #include <thread>
 #include <vector>
