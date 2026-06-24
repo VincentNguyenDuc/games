@@ -21,3 +21,4 @@ enable_testing()
 
 add_subdirectory(tictactoe)
 add_subdirectory(pathofgu)
+add_subdirectory(leah_village)
