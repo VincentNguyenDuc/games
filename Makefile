@@ -4,7 +4,7 @@ BUILD_PRESET ?= debug
 FMT_FILES := $(shell find $(TARGET)/src $(TARGET)/include $(TARGET)/tests \
              \( -name "*.c" -o -name "*.h" -o -name "*.cpp" -o -name "*.hpp" \) 2>/dev/null)
 
-.PHONY: help init clean install-hooks format format-all build build-all run test
+.PHONY: help init clean install-hooks format format-all build build-all run test docs
 
 help:
 	@echo "-----------------------------------------------------------------------"
@@ -18,6 +18,7 @@ help:
 	@echo "  clean           | Remove build artifacts"
 	@echo "  format          | Format C/C++ files for TARGET"
 	@echo "  format-all      | Format all C/C++ files in the repository"
+	@echo "  docs            | Serve mdbook"
 	@echo "-----------------------------------------------------------------------"
 
 init:
@@ -53,3 +54,6 @@ format-all:
 	clang-format -i \
 	$(shell find . -not -path "./build/*" \
 	\( -name "*.c" -o -name "*.h" -o -name "*.cpp" -o -name "*.hpp" \) 2>/dev/null)
+
+docs:
+	mdbook serve docs

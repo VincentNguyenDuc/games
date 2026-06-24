@@ -1,0 +1,10 @@
+[book]
+title = "Games Monorepo"
+authors = ["Vincent Nguyen"]
+language = "en"
+src = "src"
+
+[output.html]
+default-theme = "navy"
+git-repository-url = "https://github.com/vincentdnguyen/games"
+edit-url-template = "https://github.com/vincentdnguyen/games/edit/main/docs/src/{path}"
