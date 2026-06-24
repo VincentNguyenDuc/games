@@ -2,7 +2,6 @@ find_package(ftxui CONFIG REQUIRED)
 
 add_executable(pathofgu
     src/main.cpp
-    src/ecs/entity.cpp
     src/items/gu_worm_db.cpp
     src/input/parser.cpp
     src/world/world.cpp
@@ -16,6 +15,7 @@ add_executable(pathofgu
 )
 target_include_directories(pathofgu PRIVATE include)
 target_link_libraries(pathofgu PRIVATE
+    ecs_engine
     fmt::fmt
     spdlog::spdlog
     ftxui::screen
