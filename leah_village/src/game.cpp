@@ -7,13 +7,8 @@
 #include <chrono>
 #include <filesystem>
 #include <fmt/format.h>
-#include <ftxui/component/component.hpp>
-#include <ftxui/component/event.hpp>
-#include <ftxui/dom/elements.hpp>
+#include <raylib.h>
 #include <spdlog/spdlog.h>
-#include <thread>
-
-using namespace ftxui;
 
 // ─── Construction ────────────────────────────────────────────────────────────
 
@@ -23,7 +18,6 @@ Game::Game() {
 
     last_tick_ = std::chrono::steady_clock::now();
 
-    // Try to resume a saved game; if none exists, start fresh.
     if (std::filesystem::exists(Game::DB_PATH))
         load_game();
 }
@@ -31,13 +25,11 @@ Game::Game() {
 // ─── ECS setup ───────────────────────────────────────────────────────────────
 
 void Game::setup_ecs() {
-    // Create player entity
     player_ = ecs_.entities().createEntity();
     ecs_.registry().addComponent<Player>(player_, {});
     ecs_.registry().addComponent<Experience>(player_, {});
     ecs_.registry().addComponent<Position>(player_, {1, 1});
 
-    // Register systems
     produce_sys_ = &ecs_.add_system<ProduceSystem>();
     build_sys_ = &ecs_.add_system<ConstructionSystem>();
     boost_sys_ = &ecs_.add_system<BoostSystem>();
@@ -67,7 +59,6 @@ ecse::Entity Game::spawn_building(MapId map_id, int x, int y, BuildingType type,
     ecs_.registry().addComponent<Building>(e, {type, 1, stat.hp, stat.hp});
     ecs_.registry().addComponent<Level>(e, {level, d.max_level});
 
-    // Attach subsystem components based on type
     switch (type) {
     case BuildingType::GoldMine:
         ecs_.registry().addComponent<ResourceProducer>(
@@ -97,7 +88,6 @@ ecse::Entity Game::spawn_building(MapId map_id, int x, int y, BuildingType type,
         break;
     }
 
-    // Attach upgrade cost for next level (if not already at max)
     if (level < d.max_level) {
         const auto& next = d.stats[level];
         ecs_.registry().addComponent<UpgradeCost>(e, {next.gold_cost, next.elixir_cost});
@@ -130,10 +120,10 @@ void Game::spawn_initial_buildings() {
     spawn_building(0, 2, 9, BuildingType::BuilderHut);
     spawn_building(0, 18, 9, BuildingType::Farm);
 
-    spawn_obstacle(0, 7, 2, 25, 0, 1.f);
-    spawn_obstacle(0, 13, 2, 0, 25, 1.f);
-    spawn_obstacle(0, 7, 8, 30, 0, 1.f);
-    spawn_obstacle(0, 13, 8, 0, 30, 1.f);
+    spawn_obstacle(0, 7, 2, 25, 0, 5.f);
+    spawn_obstacle(0, 13, 2, 0, 25, 5.f);
+    spawn_obstacle(0, 7, 8, 30, 0, 5.f);
+    spawn_obstacle(0, 13, 8, 0, 30, 5.f);
 
     // ── Ancient Forest (Map 1) ───────────────────────────────────────────────
     spawn_building(1, 5, 5, BuildingType::ElixirCollector);
@@ -142,7 +132,7 @@ void Game::spawn_initial_buildings() {
 
     for (auto [ox, oy] : std::initializer_list<std::pair<int, int>>{
              {2, 2}, {3, 7}, {7, 3}, {11, 8}, {15, 2}, {15, 7}, {6, 9}, {12, 3}})
-        spawn_obstacle(1, ox, oy, 0, 40, 90.f);
+        spawn_obstacle(1, ox, oy, 0, 40, 10.f);
 
     // ── Crystal Caves (Map 2) ────────────────────────────────────────────────
     spawn_building(2, 6, 4, BuildingType::GoldMine, 2);
@@ -152,26 +142,32 @@ void Game::spawn_initial_buildings() {
 
     for (auto [ox, oy] : std::initializer_list<std::pair<int, int>>{
              {9, 3}, {14, 3}, {3, 6}, {21, 6}, {9, 12}, {14, 12}})
-        spawn_obstacle(2, ox, oy, 100, 0, 120.f);
+        spawn_obstacle(2, ox, oy, 100, 0, 15.f);
 }
 
 // ─── Game loop ────────────────────────────────────────────────────────────────
 
 void Game::run() {
-    auto renderer = Renderer([this] { return render(); });
-    auto component = CatchEvent(renderer, [this](Event e) { return handle_input(e); });
+    InitWindow(WINDOW_W, WINDOW_H, "Leah's Village");
+    SetTargetFPS(60);
+    last_tick_ = std::chrono::steady_clock::now();
 
-    // Timer thread: posts a Custom event every 200 ms → triggers tick + re-render.
-    std::thread timer([this] {
-        while (running_.load()) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(200));
-            screen_.PostEvent(Event::Custom);
-        }
-    });
+    while (!WindowShouldClose() && !quit_) {
+        auto now = std::chrono::steady_clock::now();
+        float dt = std::chrono::duration<float>(now - last_tick_).count();
+        last_tick_ = now;
 
-    screen_.Loop(component);
-    running_.store(false);
-    timer.join();
+        handle_input();
+        tick(dt);
+
+        BeginDrawing();
+        ClearBackground({15, 15, 25, 255});
+        render();
+        EndDrawing();
+    }
+
+    save_game();
+    CloseWindow();
 }
 
 // ─── Tick ─────────────────────────────────────────────────────────────────────
@@ -234,7 +230,6 @@ bool Game::spend_resources(int gold, int elixir) {
 }
 
 void Game::add_resources(int gold, int elixir) {
-    // Distribute across storages (gold first, then elixir).
     auto distribute = [&](ResourceType rtype, int amount) {
         for (ecse::Entity e : ecs_.registry().view<ResourceStorage>()) {
             if (amount == 0)
@@ -253,7 +248,6 @@ void Game::add_resources(int gold, int elixir) {
 }
 
 void Game::grant_xp(int amount) {
-    // Attach PendingXP to the player entity so LevelUpSystem picks it up next tick.
     if (auto* existing = ecs_.registry().getComponent<PendingXP>(player_))
         existing->amount += amount;
     else
@@ -301,7 +295,6 @@ void Game::try_move(int dx, int dy) {
         pos->x = g.target_x;
         pos->y = g.target_y;
 
-        // Award first-visit XP
         if (g.target_map == 1 && !pl->visited_forest) {
             pl->visited_forest = true;
             grant_xp(50);
@@ -321,7 +314,6 @@ void Game::try_move(int dx, int dy) {
     if (m.walkable(nx, ny)) {
         pos->x = nx;
         pos->y = ny;
-        // Auto-select whatever is adjacent (deselect if open ground)
         selected_ = 0;
     }
 }
@@ -335,7 +327,6 @@ void Game::try_interact() {
     Map& m = world_.current_map();
     ecse::Entity e = m.get_entity(pos->x, pos->y);
 
-    // Check 4-directional adjacency too
     if (!e) {
         for (auto [dx, dy] :
              std::initializer_list<std::pair<int, int>>{{0, -1}, {0, 1}, {-1, 0}, {1, 0}}) {
@@ -354,7 +345,6 @@ void Game::try_interact() {
 
     selected_ = e;
 
-    // If it's a ResourceProducer with something stored → collect
     if (auto* prod = ecs_.registry().getComponent<ResourceProducer>(e)) {
         if (prod->stored >= 1.f) {
             do_collect(e);
@@ -362,7 +352,6 @@ void Game::try_interact() {
         }
     }
 
-    // If it's an Obstacle → start clearing
     if (auto* obs = ecs_.registry().getComponent<Obstacle>(e)) {
         if (obs->time_remaining_s <= 0.f)
             do_clear_obstacle(e);
@@ -485,7 +474,6 @@ void Game::start_construction(ecse::Entity e, ConstructionKind kind, float time_
     auto* p = ecs_.registry().getComponent<Player>(player_);
     if (p)
         p->busy_builders++;
-    // Remove upgrade cost while building
     ecs_.registry().removeComponent<UpgradeCost>(e);
 }
 
@@ -502,7 +490,6 @@ void Game::finish_construction(ecse::Entity e, bool is_upgrade) {
         bld->max_hp = stat.hp;
         bld->hp = stat.hp;
 
-        // Update subsystem components with new stats
         if (auto* prod = ecs_.registry().getComponent<ResourceProducer>(e)) {
             prod->rate_per_hour = stat.rate_per_hour;
             prod->capacity = stat.prod_cap;
@@ -514,7 +501,6 @@ void Game::finish_construction(ecse::Entity e, bool is_upgrade) {
             pop->capacity = stat.pop_cap;
         }
 
-        // Reattach upgrade cost for next level if applicable
         if (lv->level < d.max_level) {
             const auto& next = d.stats[lv->level];
             ecs_.registry().addComponent<UpgradeCost>(e, {next.gold_cost, next.elixir_cost});
@@ -537,7 +523,7 @@ void Game::finish_construction(ecse::Entity e, bool is_upgrade) {
 void Game::enter_build_mode() {
     mode_ = Mode::BuildSelect;
     build_menu_idx_ = 0;
-    push_msg("Build mode: select type with +/-, place with Enter, cancel with Esc.");
+    push_msg("Build mode: +/- to pick type, Enter to place, Esc to cancel.");
 }
 
 void Game::confirm_build() {
@@ -630,230 +616,180 @@ std::string Game::fmt_time(float seconds) {
 
 // ─── Input ────────────────────────────────────────────────────────────────────
 
-bool Game::handle_input(Event e) {
-    // Timer tick
-    if (e == Event::Custom) {
-        auto now = std::chrono::steady_clock::now();
-        float dt = std::chrono::duration<float>(now - last_tick_).count();
-        last_tick_ = now;
-        tick(dt);
-        return false; // still re-render
-    }
+void Game::handle_input() {
+    static const BuildingType BUILD_TYPES[] = {
+        BuildingType::GoldMine,
+        BuildingType::ElixirCollector,
+        BuildingType::GoldStorage,
+        BuildingType::ElixirStorage,
+        BuildingType::BuilderHut,
+        BuildingType::Farm,
+        BuildingType::Decoration,
+    };
+    constexpr int N = 7;
 
     if (mode_ == Mode::BuildSelect) {
-        static const BuildingType BUILD_TYPES[] = {
-            BuildingType::GoldMine,
-            BuildingType::ElixirCollector,
-            BuildingType::GoldStorage,
-            BuildingType::ElixirStorage,
-            BuildingType::BuilderHut,
-            BuildingType::Farm,
-            BuildingType::Decoration,
-        };
-        constexpr int N = 7;
-
-        if (e == Event::Character('+') || e == Event::ArrowRight) {
+        // Cycle building type with +/- (character based) or Left/Right arrows
+        int ch;
+        while ((ch = GetCharPressed()) != 0) {
+            if (ch == '+') {
+                build_menu_idx_ = (build_menu_idx_ + 1) % N;
+                build_cursor_type_ = BUILD_TYPES[build_menu_idx_];
+            } else if (ch == '-') {
+                build_menu_idx_ = (build_menu_idx_ + N - 1) % N;
+                build_cursor_type_ = BUILD_TYPES[build_menu_idx_];
+            }
+        }
+        if (IsKeyPressed(KEY_RIGHT)) {
             build_menu_idx_ = (build_menu_idx_ + 1) % N;
             build_cursor_type_ = BUILD_TYPES[build_menu_idx_];
-            return true;
         }
-        if (e == Event::Character('-') || e == Event::ArrowLeft) {
+        if (IsKeyPressed(KEY_LEFT)) {
             build_menu_idx_ = (build_menu_idx_ + N - 1) % N;
             build_cursor_type_ = BUILD_TYPES[build_menu_idx_];
-            return true;
         }
-        if (e == Event::Return) {
+        if (IsKeyPressed(KEY_ENTER)) {
             confirm_build();
-            return true;
+            return;
         }
-        if (e == Event::Escape) {
+        if (IsKeyPressed(KEY_ESCAPE)) {
             cancel_build();
-            return true;
+            return;
         }
-        // Also allow WASD movement in build mode (to position player on target tile)
+
+        // Allow WASD movement in build mode to reposition player
+        if (IsKeyPressed(KEY_W) || IsKeyPressed(KEY_UP))
+            try_move(0, -1);
+        if (IsKeyPressed(KEY_S) || IsKeyPressed(KEY_DOWN))
+            try_move(0, 1);
+        if (IsKeyPressed(KEY_A))
+            try_move(-1, 0);
+        if (IsKeyPressed(KEY_D))
+            try_move(1, 0);
+        return;
     }
 
-    // Movement
-    if (e == Event::Character('w') || e == Event::ArrowUp) {
+    // Normal mode movement
+    if (IsKeyPressed(KEY_W) || IsKeyPressed(KEY_UP))
         try_move(0, -1);
-        return true;
-    }
-    if (e == Event::Character('s') || e == Event::ArrowDown) {
+    if (IsKeyPressed(KEY_S) || IsKeyPressed(KEY_DOWN))
         try_move(0, 1);
-        return true;
-    }
-    if (e == Event::Character('a') || e == Event::ArrowLeft) {
+    if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_LEFT))
         try_move(-1, 0);
-        return true;
-    }
-    if (e == Event::Character('d') || e == Event::ArrowRight) {
+    if (IsKeyPressed(KEY_D) || IsKeyPressed(KEY_RIGHT))
         try_move(1, 0);
-        return true;
-    }
 
-    // Actions
-    if (e == Event::Character('e') || e == Event::Character('E')) {
+    if (IsKeyPressed(KEY_E))
         try_interact();
-        return true;
-    }
-    if (e == Event::Character('u') || e == Event::Character('U')) {
+    if (IsKeyPressed(KEY_U))
         try_upgrade();
-        return true;
-    }
-    if (e == Event::Character('c') || e == Event::Character('C')) {
+    if (IsKeyPressed(KEY_C))
         try_clear();
-        return true;
-    }
-    if (e == Event::Character('b') || e == Event::Character('B')) {
+    if (IsKeyPressed(KEY_B))
         enter_build_mode();
-        return true;
-    }
 
-    // Save / Load
-    if (e == Event::Character('\x13')) {
+    bool ctrl = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
+    if (ctrl && IsKeyPressed(KEY_S)) {
         save_game();
-        return true;
-    } // Ctrl+S
-    if (e == Event::Character('\f')) {
+        return;
+    }
+    if (ctrl && IsKeyPressed(KEY_L)) {
         load_game();
-        return true;
-    } // Ctrl+L
-
-    // Quit
-    if (e == Event::Character('q') || e == Event::Character('Q')) {
-        save_game();
-        screen_.ExitLoopClosure()();
-        return true;
+        return;
     }
 
-    return false;
+    if (IsKeyPressed(KEY_Q)) {
+        save_game();
+        quit_ = true;
+    }
 }
 
 // ─── Rendering ────────────────────────────────────────────────────────────────
 
-ftxui::Element Game::render() {
-    return vbox({
-        render_hud(),
-        hbox({
-            render_map() | flex,
-            separator(),
-            render_panel() | size(WIDTH, EQUAL, 32),
-        }) | flex,
-        render_statusbar(),
-    });
+void Game::render() {
+    render_hud();
+    render_map();
+    render_panel();
+    render_statusbar();
 }
 
-ftxui::Element Game::render_hud() {
+// Panel divider line
+static void panel_divider(int panel_x, int window_w, int y) {
+    DrawLine(panel_x + 8, y, window_w - 8, y, {70, 70, 100, 255});
+}
+
+void Game::render_hud() {
+    DrawRectangle(0, 0, WINDOW_W, HUD_H, {28, 28, 48, 255});
+    DrawLine(0, HUD_H - 1, WINDOW_W, HUD_H - 1, {70, 70, 110, 255});
+
     auto* exp = ecs_.registry().getComponent<Experience>(player_);
     auto* pl = ecs_.registry().getComponent<Player>(player_);
     int lv = exp ? exp->level : 1;
     int cur = exp ? exp->current_xp : 0;
     int nxt = exp ? exp->xp_to_next : 100;
-
-    // XP progress bar (20 segments)
-    int filled = nxt > 0 ? (cur * 20 / nxt) : 0;
-    std::string bar;
-    for (int i = 0; i < 20; i++)
-        bar += (i < filled) ? "=" : "-";
-
-    int gold = total_gold();
-    int goldcap = total_gold_cap();
-    int elix = total_elixir();
-    int elixcap = total_elixir_cap();
+    int gold = total_gold(), goldcap = total_gold_cap();
+    int elix = total_elixir(), elixcap = total_elixir_cap();
     int builders = pl ? pl->builder_slots : 1;
     int busy = pl ? pl->busy_builders : 0;
-
     const Map& m = world_.current_map();
 
-    return hbox({
-               text(fmt::format(" {} ", m.name)) | bold,
-               separator(),
-               text(fmt::format(" Lv.{} [{}] {}/{} XP ", lv, bar, cur, nxt)) | color(Color::Yellow),
-               separator(),
-               text(fmt::format(" Gold: {}/{} ", gold, goldcap)) | color(Color::Gold1),
-               separator(),
-               text(fmt::format(" Elixir: {}/{} ", elix, elixcap)) | color(Color::MediumPurple1),
-               separator(),
-               text(fmt::format(" Builders: {}/{} ", builders - busy, builders)) |
-                   color(Color::Cyan1),
-           }) |
-           border;
+    constexpr int FS = 20;
+    constexpr int TY = 18;
+    int x = 12;
+
+    // Map name
+    DrawText(m.name.c_str(), x, TY, FS, WHITE);
+    x += MeasureText(m.name.c_str(), FS) + 18;
+
+    // Separator
+    DrawLine(x, 8, x, HUD_H - 8, {70, 70, 110, 255});
+    x += 12;
+
+    // Level + XP bar
+    auto lv_str = fmt::format("Lv.{}", lv);
+    DrawText(lv_str.c_str(), x, TY, FS, YELLOW);
+    x += MeasureText(lv_str.c_str(), FS) + 8;
+
+    constexpr int BAR_W = 120, BAR_H = 14;
+    int filled = (nxt > 0) ? (cur * BAR_W / nxt) : 0;
+    DrawRectangle(x, TY + 3, BAR_W, BAR_H, {60, 60, 0, 255});
+    DrawRectangle(x, TY + 3, filled, BAR_H, {220, 200, 0, 255});
+    DrawRectangleLines(x, TY + 3, BAR_W, BAR_H, {120, 120, 0, 255});
+    x += BAR_W + 6;
+
+    auto xp_str = fmt::format("{}/{}", cur, nxt);
+    DrawText(xp_str.c_str(), x, TY, FS - 2, {180, 180, 0, 255});
+    x += MeasureText(xp_str.c_str(), FS - 2) + 18;
+
+    DrawLine(x, 8, x, HUD_H - 8, {70, 70, 110, 255});
+    x += 12;
+
+    // Gold
+    auto gold_str = fmt::format("Gold: {}/{}", gold, goldcap);
+    DrawText(gold_str.c_str(), x, TY, FS, {255, 200, 0, 255});
+    x += MeasureText(gold_str.c_str(), FS) + 18;
+
+    DrawLine(x, 8, x, HUD_H - 8, {70, 70, 110, 255});
+    x += 12;
+
+    // Elixir
+    auto elix_str = fmt::format("Elixir: {}/{}", elix, elixcap);
+    DrawText(elix_str.c_str(), x, TY, FS, {180, 100, 255, 255});
+    x += MeasureText(elix_str.c_str(), FS) + 18;
+
+    DrawLine(x, 8, x, HUD_H - 8, {70, 70, 110, 255});
+    x += 12;
+
+    // Builders
+    auto bld_str = fmt::format("Builders: {}/{}", builders - busy, builders);
+    DrawText(bld_str.c_str(), x, TY, FS, {80, 200, 255, 255});
 }
 
-ftxui::Element Game::render_cell(int x, int y) {
-    auto* pl = ecs_.registry().getComponent<Player>(player_);
+void Game::render_map() {
     auto* pos = ecs_.registry().getComponent<Position>(player_);
     const Map& m = world_.current_map();
 
-    bool is_player = (pos && pos->x == x && pos->y == y);
-    if (is_player)
-        return text("@ ") | bold | color(Color::White);
-
-    int cell = m.grid[y][x];
-    if (cell == Cell::Wall)
-        return text("##") | color(Color::GrayDark);
-    if (cell == Cell::Gate)
-        return text(">>") | color(Color::Magenta);
-
-    ecse::Entity e = m.get_entity(x, y);
-    if (!e)
-        return text("..") | color(Color::GrayDark);
-
-    bool is_sel = (e == selected_);
-    bool under_con = (ecs_.registry().getComponent<Construction>(e) != nullptr);
-
-    if (ecs_.registry().getComponent<Obstacle>(e)) {
-        auto* obs = ecs_.registry().getComponent<Obstacle>(e);
-        bool clearing = obs && obs->time_remaining_s > 0.f;
-        auto el = text("~~") | color(Color::Green);
-        return clearing ? (el | dim) : el;
-    }
-
-    auto* bld = ecs_.registry().getComponent<Building>(e);
-    if (!bld)
-        return text("??") | color(Color::GrayDark);
-
-    std::string sym(Assets::def(bld->type).symbol);
-    Color col = Color::White;
-    switch (bld->type) {
-    case BuildingType::TownHall:
-        col = Color::Yellow;
-        break;
-    case BuildingType::GoldMine:
-        col = Color::Gold1;
-        break;
-    case BuildingType::ElixirCollector:
-        col = Color::MediumPurple1;
-        break;
-    case BuildingType::GoldStorage:
-        col = Color::Gold3;
-        break;
-    case BuildingType::ElixirStorage:
-        col = Color::Purple;
-        break;
-    case BuildingType::BuilderHut:
-        col = Color::Cyan1;
-        break;
-    case BuildingType::Farm:
-        col = Color::Green3;
-        break;
-    default:
-        col = Color::GrayLight;
-        break;
-    }
-
-    auto el = text(under_con ? "[]" : sym) | color(col);
-    if (is_sel)
-        el = el | inverted;
-    return el;
-}
-
-ftxui::Element Game::render_map() {
-    auto* pos = ecs_.registry().getComponent<Position>(player_);
-    const Map& m = world_.current_map();
-
-    // Viewport: show up to 20 cols × 12 rows centered on player
-    constexpr int VW = 20, VH = 12;
+    constexpr int VW = VIEWPORT_COLS, VH = VIEWPORT_ROWS;
     int cx = pos ? pos->x : m.width() / 2;
     int cy = pos ? pos->y : m.height() / 2;
 
@@ -862,50 +798,205 @@ ftxui::Element Game::render_map() {
     int x1 = std::min(x0 + VW, m.width());
     int y1 = std::min(y0 + VH, m.height());
 
-    std::vector<Element> rows;
-    for (int y = y0; y < y1; y++) {
-        std::vector<Element> cells;
-        for (int x = x0; x < x1; x++)
-            cells.push_back(render_cell(x, y));
-        rows.push_back(hbox(std::move(cells)));
-    }
+    DrawRectangle(0, MAP_Y, MAP_PX_W, MAP_PX_H, {18, 18, 30, 255});
 
-    return vbox(std::move(rows)) | border;
+    for (int y = y0; y < y1; y++)
+        for (int x = x0; x < x1; x++)
+            render_cell(x, y, (x - x0) * TILE_W, MAP_Y + (y - y0) * TILE_H);
+
+    DrawRectangleLines(0, MAP_Y, MAP_PX_W, MAP_PX_H, {70, 70, 110, 255});
 }
 
-ftxui::Element Game::render_panel() {
+void Game::render_cell(int x, int y, int px, int py) {
+    auto* pl_pos = ecs_.registry().getComponent<Position>(player_);
+    const Map& m = world_.current_map();
+
+    bool is_player = (pl_pos && pl_pos->x == x && pl_pos->y == y);
+    int cell = m.grid[y][x];
+    ecse::Entity e = m.get_entity(x, y);
+    bool is_sel = (e && e == selected_);
+
+    // ── Background ────────────────────────────────────────────────────────────
+    Color bg = {18, 18, 30, 255};
+    if (cell == Cell::Wall)
+        bg = {55, 55, 65, 255};
+    else if (cell == Cell::Gate)
+        bg = {70, 0, 90, 255};
+    else if (is_sel)
+        bg = {50, 50, 75, 255};
+
+    DrawRectangle(px, py, TILE_W - 1, TILE_H - 1, bg);
+
+    // ── Symbol + foreground color ─────────────────────────────────────────────
+    const char* sym = nullptr;
+    Color col = GRAY;
+
+    if (is_player) {
+        sym = "@";
+        col = WHITE;
+        DrawRectangle(px, py, TILE_W - 1, TILE_H - 1, {40, 40, 60, 255});
+    } else if (cell == Cell::Wall) {
+        sym = "#";
+        col = {90, 90, 100, 255};
+    } else if (cell == Cell::Gate) {
+        sym = ">>";
+        col = {220, 120, 255, 255};
+    } else if (e) {
+        if (auto* obs = ecs_.registry().getComponent<Obstacle>(e)) {
+            bool clearing = obs->time_remaining_s > 0.f;
+            sym = clearing ? "~~" : "~~";
+            col = clearing ? Color{0, 140, 0, 255} : Color{0, 210, 60, 255};
+            DrawRectangle(px, py, TILE_W - 1, TILE_H - 1, {0, 40, 0, 255});
+        } else if (auto* bld = ecs_.registry().getComponent<Building>(e)) {
+            bool under_con = (ecs_.registry().getComponent<Construction>(e) != nullptr);
+            auto sym_sv = under_con ? std::string_view("[]") : Assets::def(bld->type).symbol;
+            // borrow a static buffer so DrawText gets a null-terminated string
+            static char sym_buf[8];
+            sym_buf[0] = sym_sv[0];
+            sym_buf[1] = sym_sv.size() > 1 ? sym_sv[1] : '\0';
+            sym_buf[2] = '\0';
+            sym = sym_buf;
+
+            Color tile_bg = bg;
+            switch (bld->type) {
+            case BuildingType::TownHall:
+                col = YELLOW;
+                tile_bg = {70, 70, 0, 255};
+                break;
+            case BuildingType::GoldMine:
+                col = {255, 200, 0, 255};
+                tile_bg = {65, 55, 0, 255};
+                break;
+            case BuildingType::ElixirCollector:
+                col = {200, 120, 255, 255};
+                tile_bg = {50, 0, 80, 255};
+                break;
+            case BuildingType::GoldStorage:
+                col = {220, 170, 0, 255};
+                tile_bg = {55, 45, 0, 255};
+                break;
+            case BuildingType::ElixirStorage:
+                col = {160, 80, 240, 255};
+                tile_bg = {40, 0, 65, 255};
+                break;
+            case BuildingType::BuilderHut:
+                col = {80, 200, 255, 255};
+                tile_bg = {0, 50, 80, 255};
+                break;
+            case BuildingType::Farm:
+                col = {80, 220, 80, 255};
+                tile_bg = {0, 55, 0, 255};
+                break;
+            default:
+                col = LIGHTGRAY;
+                tile_bg = {40, 40, 55, 255};
+                break;
+            }
+            if (under_con) {
+                col = {200, 200, 60, 255};
+                tile_bg = {50, 50, 0, 255};
+            }
+            if (is_sel)
+                tile_bg = {
+                    static_cast<unsigned char>(tile_bg.r + 20),
+                    static_cast<unsigned char>(tile_bg.g + 20),
+                    static_cast<unsigned char>(tile_bg.b + 20),
+                    255};
+            DrawRectangle(px, py, TILE_W - 1, TILE_H - 1, tile_bg);
+        }
+    } else {
+        sym = ".";
+        col = {45, 45, 65, 255};
+    }
+
+    // ── Draw symbol centered in tile ─────────────────────────────────────────
+    if (sym) {
+        constexpr int FS = 18;
+        int tw = MeasureText(sym, FS);
+        DrawText(sym, px + (TILE_W - 1 - tw) / 2, py + (TILE_H - 1 - FS) / 2, FS, col);
+    }
+
+    // ── Selection border ─────────────────────────────────────────────────────
+    if (is_sel)
+        DrawRectangleLines(px, py, TILE_W - 1, TILE_H - 1, WHITE);
+}
+
+void Game::render_panel() {
+    DrawRectangle(PANEL_X, 0, PANEL_W, WINDOW_H, {22, 22, 38, 255});
+    DrawLine(PANEL_X, 0, PANEL_X, WINDOW_H, {70, 70, 110, 255});
+
+    constexpr int X = PANEL_X + 14;
+    constexpr int FS = 18;
+    constexpr int LH = 24;
+    int y = 12;
+
     if (mode_ == Mode::BuildSelect) {
+        DrawText("BUILD MODE", X, y, FS + 3, YELLOW);
+        y += LH + 6;
+        panel_divider(PANEL_X, WINDOW_W, y);
+        y += 10;
+
         const auto& d = Assets::def(build_cursor_type_);
         const auto& stat = d.stats[0];
-        return vbox({
-                   text(" BUILD MODE ") | bold | center,
-                   separator(),
-                   text(fmt::format(" {}", d.name)),
-                   text(fmt::format(" Cost: {}G {}E", stat.gold_cost, stat.elixir_cost)),
-                   text(fmt::format(" Time: {}", fmt_time(static_cast<float>(stat.build_time_s)))),
-                   separator(),
-                   text(" +/- : change type"),
-                   text(" Enter: place here"),
-                   text(" Esc  : cancel"),
-               }) |
-               border;
+        std::string name_s(d.name);
+
+        DrawText(name_s.c_str(), X, y, FS + 2, WHITE);
+        y += LH + 4;
+        DrawText(
+            fmt::format("Cost: {}G  {}E", stat.gold_cost, stat.elixir_cost).c_str(),
+            X,
+            y,
+            FS,
+            {200, 200, 200, 255}
+        );
+        y += LH;
+        DrawText(
+            fmt::format("Time: {}", fmt_time(static_cast<float>(stat.build_time_s))).c_str(),
+            X,
+            y,
+            FS,
+            {200, 200, 200, 255}
+        );
+        y += LH + 8;
+
+        panel_divider(PANEL_X, WINDOW_W, y);
+        y += 10;
+        DrawText("+/- or </> : change type", X, y, FS - 2, {160, 160, 180, 255});
+        y += LH;
+        DrawText("Enter : place here", X, y, FS - 2, {160, 160, 180, 255});
+        y += LH;
+        DrawText("Esc   : cancel", X, y, FS - 2, {160, 160, 180, 255});
+        y += LH;
+
+        return;
     }
 
     if (!selected_) {
-        return vbox({
-                   text(" No selection ") | dim | center,
-                   separator(),
-                   text(" E - interact/collect ") | dim,
-                   text(" U - upgrade          ") | dim,
-                   text(" B - build            ") | dim,
-                   text(" C - clear obstacle   ") | dim,
-               }) |
-               border;
+        DrawText("No selection", X, y, FS, {120, 120, 140, 255});
+        y += LH + 8;
+        panel_divider(PANEL_X, WINDOW_W, y);
+        y += 10;
+        const Color hint = {100, 100, 120, 255};
+        DrawText("WASD / arrows : move", X, y, FS - 2, hint);
+        y += LH;
+        DrawText("E : interact / collect", X, y, FS - 2, hint);
+        y += LH;
+        DrawText("U : upgrade", X, y, FS - 2, hint);
+        y += LH;
+        DrawText("B : build", X, y, FS - 2, hint);
+        y += LH;
+        DrawText("C : clear obstacle", X, y, FS - 2, hint);
+        y += LH;
+        DrawText("Q : save + quit", X, y, FS - 2, hint);
+        y += LH;
+        DrawText("Ctrl+S : save", X, y, FS - 2, hint);
+        y += LH;
+        DrawText("Ctrl+L : load", X, y, FS - 2, hint);
+        y += LH;
+        return;
     }
 
     ecse::Entity e = selected_;
-    std::vector<Element> lines;
-
     auto* nm = ecs_.registry().getComponent<Name>(e);
     auto* lv = ecs_.registry().getComponent<Level>(e);
     auto* bld = ecs_.registry().getComponent<Building>(e);
@@ -916,103 +1007,177 @@ ftxui::Element Game::render_panel() {
     auto* uc = ecs_.registry().getComponent<UpgradeCost>(e);
     auto* bst = ecs_.registry().getComponent<Boost>(e);
 
-    if (nm)
-        lines.push_back(text(fmt::format(" {}", nm->value)) | bold);
-    if (lv)
-        lines.push_back(text(fmt::format(" Level {}/{}", lv->level, lv->max_level)));
-    if (bld)
-        lines.push_back(text(fmt::format(" HP {}/{}", bld->hp, bld->max_hp)));
+    if (nm) {
+        DrawText(nm->value.c_str(), X, y, FS + 4, WHITE);
+        y += LH + 6;
+    }
+    if (lv) {
+        DrawText(
+            fmt::format("Level {}/{}", lv->level, lv->max_level).c_str(),
+            X,
+            y,
+            FS,
+            {180, 180, 200, 255}
+        );
+        y += LH;
+    }
+    if (bld) {
+        DrawText(
+            fmt::format("HP {}/{}", bld->hp, bld->max_hp).c_str(), X, y, FS, {180, 180, 200, 255}
+        );
+        y += LH;
+    }
 
     if (obs) {
-        lines.push_back(separator());
-        lines.push_back(text(" Obstacle") | color(Color::Green));
-        lines.push_back(text(fmt::format(" Clears in: {}", fmt_time(obs->clear_time_s))));
-        if (obs->time_remaining_s > 0.f)
-            lines.push_back(
-                text(fmt::format(" Remaining: {}", fmt_time(obs->time_remaining_s))) |
-                color(Color::Yellow)
-            );
-        lines.push_back(text(fmt::format(" Reward: {}G {}E", obs->gold_reward, obs->elixir_reward))
+        y += 4;
+        panel_divider(PANEL_X, WINDOW_W, y);
+        y += 10;
+        DrawText("Obstacle", X, y, FS, {80, 210, 80, 255});
+        y += LH;
+        DrawText(
+            fmt::format("Clears in: {}", fmt_time(obs->clear_time_s)).c_str(),
+            X,
+            y,
+            FS - 2,
+            {160, 160, 180, 255}
         );
+        y += LH;
+        if (obs->time_remaining_s > 0.f) {
+            DrawText(
+                fmt::format("Remaining: {}", fmt_time(obs->time_remaining_s)).c_str(),
+                X,
+                y,
+                FS - 2,
+                YELLOW
+            );
+            y += LH;
+        }
+        DrawText(
+            fmt::format("Reward: {}G  {}E", obs->gold_reward, obs->elixir_reward).c_str(),
+            X,
+            y,
+            FS - 2,
+            {200, 190, 100, 255}
+        );
+        y += LH;
     }
 
     if (prd) {
-        lines.push_back(separator());
-        lines.push_back(text(
-            fmt::format(" Produces: {}", prd->resource == ResourceType::Gold ? "Gold" : "Elixir")
-        ));
-        float eff_rate = prd->rate_per_hour * (bst ? bst->multiplier : 1.f);
-        lines.push_back(text(fmt::format(" Rate: {:.0f}/hr", eff_rate)));
-        if (bst)
-            lines.push_back(
-                text(fmt::format(" Boosted ×{:.1f}", bst->multiplier)) | color(Color::Yellow)
-            );
-        lines.push_back(text(fmt::format(" Stored: {:.0f}/{:.0f}", prd->stored, prd->capacity)));
+        y += 4;
+        panel_divider(PANEL_X, WINDOW_W, y);
+        y += 10;
+        const char* rname = prd->resource == ResourceType::Gold ? "Gold" : "Elixir";
+        Color rcol = prd->resource == ResourceType::Gold ? Color{255, 200, 0, 255}
+                                                         : Color{180, 100, 255, 255};
+        DrawText(fmt::format("Produces: {}", rname).c_str(), X, y, FS, rcol);
+        y += LH;
+        float eff = prd->rate_per_hour * (bst ? bst->multiplier : 1.f);
+        DrawText(fmt::format("Rate: {:.0f}/hr", eff).c_str(), X, y, FS - 2, {160, 160, 180, 255});
+        y += LH;
+        if (bst) {
+            DrawText(fmt::format("Boosted x{:.1f}", bst->multiplier).c_str(), X, y, FS - 2, YELLOW);
+            y += LH;
+        }
+        DrawText(
+            fmt::format("Stored: {:.0f}/{:.0f}", prd->stored, prd->capacity).c_str(),
+            X,
+            y,
+            FS - 2,
+            {160, 160, 180, 255}
+        );
+        y += LH;
     }
 
     if (sto) {
-        lines.push_back(separator());
-        lines.push_back(text(
-            fmt::format(" Stores: {}", sto->resource == ResourceType::Gold ? "Gold" : "Elixir")
-        ));
-        lines.push_back(text(fmt::format(" {}/{}", sto->current, sto->capacity)));
+        y += 4;
+        panel_divider(PANEL_X, WINDOW_W, y);
+        y += 10;
+        const char* rname = sto->resource == ResourceType::Gold ? "Gold" : "Elixir";
+        Color rcol = sto->resource == ResourceType::Gold ? Color{255, 200, 0, 255}
+                                                         : Color{180, 100, 255, 255};
+        DrawText(fmt::format("Stores: {}", rname).c_str(), X, y, FS, rcol);
+        y += LH;
+        DrawText(
+            fmt::format("{}/{}", sto->current, sto->capacity).c_str(),
+            X,
+            y,
+            FS - 2,
+            {160, 160, 180, 255}
+        );
+        y += LH;
     }
 
     if (con) {
-        lines.push_back(separator());
-        lines.push_back(
-            text(con->kind == ConstructionKind::Build ? " Building…" : " Upgrading…") |
-            color(Color::Yellow)
+        y += 4;
+        panel_divider(PANEL_X, WINDOW_W, y);
+        y += 10;
+        const char* clbl = con->kind == ConstructionKind::Build ? "Building..." : "Upgrading...";
+        DrawText(clbl, X, y, FS, YELLOW);
+        y += LH;
+        DrawText(
+            fmt::format("{} remaining", fmt_time(con->time_remaining_s)).c_str(),
+            X,
+            y,
+            FS - 2,
+            {160, 160, 180, 255}
         );
-        lines.push_back(text(fmt::format(" {} remaining", fmt_time(con->time_remaining_s))));
+        y += LH;
     } else {
         if (uc) {
-            lines.push_back(separator());
-            lines.push_back(text(" U — Upgrade"));
-            lines.push_back(text(fmt::format("   {}G {}E", uc->gold, uc->elixir)));
+            y += 4;
+            panel_divider(PANEL_X, WINDOW_W, y);
+            y += 10;
+            DrawText("U  —  Upgrade", X, y, FS, {100, 200, 255, 255});
+            y += LH;
+            DrawText(
+                fmt::format("  {}G  {}E", uc->gold, uc->elixir).c_str(),
+                X,
+                y,
+                FS - 2,
+                {160, 160, 180, 255}
+            );
+            y += LH;
         }
         if (obs && obs->time_remaining_s <= 0.f) {
-            lines.push_back(separator());
-            lines.push_back(text(" C — Clear obstacle"));
+            y += 4;
+            panel_divider(PANEL_X, WINDOW_W, y);
+            y += 10;
+            DrawText("C  —  Clear obstacle", X, y, FS, {80, 210, 80, 255});
+            y += LH;
         }
     }
 
     if (prd && prd->stored >= 1.f) {
-        lines.push_back(separator());
-        lines.push_back(text(" E — Collect") | color(Color::Green));
+        y += 4;
+        panel_divider(PANEL_X, WINDOW_W, y);
+        y += 10;
+        DrawText("E  —  Collect", X, y, FS, {80, 210, 80, 255});
+        y += LH;
     }
-
-    return vbox(std::move(lines)) | border;
 }
 
-ftxui::Element Game::render_statusbar() {
-    std::vector<Element> msg_els;
-    for (const auto& msg : messages_)
-        msg_els.push_back(text(" " + msg));
+void Game::render_statusbar() {
+    DrawRectangle(0, STATUS_Y, MAP_PX_W, STATUS_H, {20, 20, 34, 255});
+    DrawLine(0, STATUS_Y, MAP_PX_W, STATUS_Y, {70, 70, 110, 255});
 
-    if (msg_els.empty())
-        msg_els.push_back(text(""));
+    constexpr int X = 10;
+    constexpr int FS = 15;
+    constexpr int LH = 20;
+    int y = STATUS_Y + 8;
 
-    return vbox({
-               hbox({
-                   text(" WASD") | bold,
-                   text(":Move "),
-                   text(" E") | bold,
-                   text(":Interact "),
-                   text(" U") | bold,
-                   text(":Upgrade "),
-                   text(" C") | bold,
-                   text(":Clear "),
-                   text(" B") | bold,
-                   text(":Build "),
-                   text(" Q") | bold,
-                   text(":Save+Quit "),
-                   text(" ^S") | bold,
-                   text(":Save "),
-                   text(" ^L") | bold,
-                   text(":Load"),
-               }),
-               vbox(std::move(msg_els)) | color(Color::GrayLight),
-           }) |
-           border;
+    DrawText(
+        "WASD:Move  E:Interact  U:Upgrade  C:Clear  B:Build  Q:Quit  Ctrl+S:Save  Ctrl+L:Load",
+        X,
+        y,
+        FS,
+        {80, 80, 100, 255}
+    );
+    y += LH + 4;
+
+    for (const auto& msg : messages_) {
+        DrawText(msg.c_str(), X, y, FS + 1, {190, 190, 210, 255});
+        y += LH;
+        if (y > WINDOW_H - LH)
+            break;
+    }
 }

@@ -9,6 +9,7 @@
         "spdlog",
         "catch2",
         "ftxui",
+        "raylib",
         "sqlite3"
     ]
 }
