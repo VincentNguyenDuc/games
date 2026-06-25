@@ -35,6 +35,8 @@
 
 class Game {
 public:
+    inline static const std::string DB_PATH = "leah_village/game.db";
+
     Game();
     void run();
 

@@ -24,7 +24,7 @@ Game::Game() {
     last_tick_ = std::chrono::steady_clock::now();
 
     // Try to resume a saved game; if none exists, start fresh.
-    if (std::filesystem::exists("leah_village.db"))
+    if (std::filesystem::exists(Game::DB_PATH))
         load_game();
 }
 
@@ -130,10 +130,10 @@ void Game::spawn_initial_buildings() {
     spawn_building(0, 2, 9, BuildingType::BuilderHut);
     spawn_building(0, 18, 9, BuildingType::Farm);
 
-    spawn_obstacle(0, 7, 2, 25, 0, 45.f);
-    spawn_obstacle(0, 13, 2, 0, 25, 45.f);
-    spawn_obstacle(0, 7, 8, 30, 0, 60.f);
-    spawn_obstacle(0, 13, 8, 0, 30, 60.f);
+    spawn_obstacle(0, 7, 2, 25, 0, 1.f);
+    spawn_obstacle(0, 13, 2, 0, 25, 1.f);
+    spawn_obstacle(0, 7, 8, 30, 0, 1.f);
+    spawn_obstacle(0, 13, 8, 0, 30, 1.f);
 
     // ── Ancient Forest (Map 1) ───────────────────────────────────────────────
     spawn_building(1, 5, 5, BuildingType::ElixirCollector);
@@ -599,12 +599,12 @@ void Game::on_level_up(int new_level) {
 // ─── Persistence ─────────────────────────────────────────────────────────────
 
 void Game::save_game() {
-    Persistence::save("leah_village.db", *this);
+    Persistence::save(Game::DB_PATH, *this);
     push_msg("Game saved.");
 }
 
 void Game::load_game() {
-    if (Persistence::load("leah_village.db", *this))
+    if (Persistence::load(Game::DB_PATH, *this))
         push_msg("Game loaded.");
     else
         push_msg("No save found.");
