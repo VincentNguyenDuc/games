@@ -4,6 +4,10 @@
 
 #include <string>
 
+using ecse::CommandBuffer;
+using ecse::EntityComponentRegistry;
+using ecse::ISystem;
+
 struct SelfEffectTickSystem : ISystem {
     std::string output;
 

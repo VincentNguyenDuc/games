@@ -4,6 +4,9 @@
 
 #include <string>
 
+using ecse::Entity;
+using ecse::EntityComponentRegistry;
+
 struct ActivationResult {
     bool success;
     std::string message;

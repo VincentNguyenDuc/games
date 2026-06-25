@@ -5,6 +5,8 @@
 
 #include <string>
 
+using ecse::Entity;
+
 // Stamped on an entity when it activates an offensive worm or makes a raw stat attack.
 // Processed and removed by resolve_attack_effects().
 struct AttackEffectComponent {

@@ -1,7 +1,6 @@
 add_executable(path_of_gu-tests
     test_ecs.cpp
     test_items.cpp
-    test_event_queue.cpp
     test_combat.cpp
     test_loot.cpp
     ../src/items/gu_worm_db.cpp

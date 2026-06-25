@@ -9,6 +9,8 @@
 
 #include <fmt/format.h>
 
+using namespace ecse;
+
 SelfEffectTickSystem::SelfEffectTickSystem() {
     reads = {
         ComponentType(typeid(SelfEffectComponent)),

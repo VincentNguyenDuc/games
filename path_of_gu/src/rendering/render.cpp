@@ -10,6 +10,7 @@
 #include <ftxui/dom/elements.hpp>
 
 using namespace ftxui;
+using namespace ecse;
 
 static const char* worm_type_label(GuWormType t) {
     switch (t) {
@@ -51,7 +52,7 @@ static Element cell_element(int cell_type, char occupant) {
 }
 
 static Element build_grid(
-    EntityComponentRegistry& reg, GameWorld& world, Entity player, Map* map, const Position* pos
+    EntityComponentRegistry& reg, World& world, Entity player, Map* map, const Position* pos
 ) {
     char display[10][10];
     for (int y = 0; y < 10; ++y)
@@ -180,7 +181,7 @@ static Element build_stats_panel(EntityComponentRegistry& reg, Entity player, co
 }
 
 ftxui::Element render(
-    EntityComponentRegistry& reg, GameWorld& world, Entity player, const std::string& status_msg
+    EntityComponentRegistry& reg, World& world, Entity player, const std::string& status_msg
 ) {
     auto* pos = reg.getComponent<Position>(player);
     Map* map = world.get_map(pos->map_id);

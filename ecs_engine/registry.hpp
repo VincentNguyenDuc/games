@@ -8,6 +8,8 @@
 #include <unordered_map>
 #include <vector>
 
+namespace ecse {
+
 using ComponentType = std::type_index;
 
 struct IComponentStore {
@@ -103,3 +105,5 @@ public:
         return s ? s->entities : std::vector<Entity>{};
     }
 };
+
+} // namespace ecse

@@ -8,6 +8,7 @@
         "fmt",
         "spdlog",
         "catch2",
-        "ftxui"
+        "ftxui",
+        "sqlite3"
     ]
 }

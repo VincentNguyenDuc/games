@@ -2,7 +2,10 @@
 
 #include "command_buffer.hpp"
 #include "registry.hpp"
+
 #include <vector>
+
+namespace ecse {
 
 struct ISystem {
     std::vector<ComponentType> reads;
@@ -32,3 +35,5 @@ public:
     void build();
     const NodeWaves& get_waves() const;
 };
+
+} // namespace ecse

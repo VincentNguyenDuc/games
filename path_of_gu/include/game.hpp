@@ -2,7 +2,7 @@
 
 #include "components/ai_behavior.hpp"
 #include "ecs.hpp"
-#include "events/events.hpp"
+#include "input/commands.hpp"
 #include "items/gu_worm_db.hpp"
 #include "systems/ai_system.hpp"
 #include "systems/effect_system.hpp"
@@ -13,8 +13,11 @@
 #include <memory>
 #include <string>
 
+using ecse::Engine;
+using ecse::Entity;
+
 class Game {
-    GameWorld game_world_;
+    World game_world_;
     Engine ecs_engine_;
     std::unique_ptr<IGuWormDatabase> db_;
     Entity player_;

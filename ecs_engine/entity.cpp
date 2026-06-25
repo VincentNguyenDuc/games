@@ -1,5 +1,8 @@
 #include "entity.hpp"
+
 #include <spdlog/spdlog.h>
+
+namespace ecse {
 
 EntityManager::EntityManager() {}
 
@@ -19,3 +22,5 @@ Entity EntityManager::createEntity() {
 }
 
 void EntityManager::destroyEntity(Entity entity) { recycle.push(entity); }
+
+} // namespace ecse

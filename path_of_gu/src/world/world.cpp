@@ -4,6 +4,8 @@
 #include <random>
 #include <stdexcept>
 
+using namespace ecse;
+
 // Dungeon layout (map IDs match construction order):
 //
 //  [0] Collapsed Archway (entrance)
@@ -18,7 +20,7 @@
 //       | south (5,9)↔(5,0)     [6] Sealed Side Chamber
 //  [7] Guardian's Sanctum (exit)
 
-GameWorld::GameWorld() {
+World::World() {
     auto entrance = make_map(
         "Collapsed Archway",
         "You awaken amid shattered jade pillars. The air reeks of decayed Gu worms."
@@ -64,7 +66,7 @@ GameWorld::GameWorld() {
     connect(refinery, 0, 5, sealed, 9, 5);
 }
 
-MapId GameWorld::make_map(std::string name, std::string description, bool is_exit) {
+MapId World::make_map(std::string name, std::string description, bool is_exit) {
     MapId id = next_id_++;
     auto map = std::make_unique<Map>();
     map->id = id;
@@ -81,7 +83,7 @@ MapId GameWorld::make_map(std::string name, std::string description, bool is_exi
     return id;
 }
 
-void GameWorld::connect(MapId a, int ax, int ay, MapId b, int bx, int by) {
+void World::connect(MapId a, int ax, int ay, MapId b, int bx, int by) {
     auto& ma = *maps_.at(a);
     auto& mb = *maps_.at(b);
 
@@ -92,26 +94,26 @@ void GameWorld::connect(MapId a, int ax, int ay, MapId b, int bx, int by) {
     mb.doors[Map::cell_key(bx, by)] = {a, ax, ay};
 }
 
-Map* GameWorld::get_map(MapId id) const {
+Map* World::get_map(MapId id) const {
     auto it = maps_.find(id);
     return it != maps_.end() ? it->second.get() : nullptr;
 }
 
-void GameWorld::add_entity(MapId map_id, Entity entity) {
+void World::add_entity(MapId map_id, Entity entity) {
     maps_.at(map_id)->entities.push_back(entity);
 }
 
-void GameWorld::remove_entity(MapId map_id, Entity entity) {
+void World::remove_entity(MapId map_id, Entity entity) {
     auto& entities = maps_.at(map_id)->entities;
     entities.erase(std::remove(entities.begin(), entities.end(), entity), entities.end());
 }
 
-void GameWorld::move_entity(Entity entity, MapId from, MapId to) {
+void World::move_entity(Entity entity, MapId from, MapId to) {
     remove_entity(from, entity);
     add_entity(to, entity);
 }
 
-std::pair<int, int> GameWorld::random_empty_cell(MapId id) {
+std::pair<int, int> World::random_empty_cell(MapId id) {
     static std::mt19937 gen(std::random_device{}());
     Map* map = maps_.at(id).get();
 

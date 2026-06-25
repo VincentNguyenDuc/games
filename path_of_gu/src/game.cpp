@@ -20,6 +20,7 @@
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/event.hpp>
 
+using namespace ecse;
 using namespace ftxui;
 
 Game::Game()

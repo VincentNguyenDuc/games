@@ -6,7 +6,9 @@
 
 #include <fmt/format.h>
 
-MoveTickSystem::MoveTickSystem(GameWorld& gw)
+using namespace ecse;
+
+MoveTickSystem::MoveTickSystem(World& gw)
     : game_world(gw) {
     reads = {
         ComponentType(typeid(MoveIntentComponent)),
@@ -15,7 +17,7 @@ MoveTickSystem::MoveTickSystem(GameWorld& gw)
     writes = {ComponentType(typeid(Position)), ComponentType(typeid(MoveIntentComponent))};
 }
 
-std::string MoveTickSystem::resolve(EntityComponentRegistry& reg, GameWorld& world) {
+std::string MoveTickSystem::resolve(EntityComponentRegistry& reg, World& world) {
     std::string out;
 
     for (Entity e : reg.view<MoveIntentComponent>()) {

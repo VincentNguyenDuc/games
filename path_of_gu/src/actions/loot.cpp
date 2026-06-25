@@ -8,12 +8,14 @@
 #include <fmt/format.h>
 #include <random>
 
+using namespace ecse;
+
 static std::mt19937& rng() {
     static std::mt19937 gen(std::random_device{}());
     return gen;
 }
 
-void process_death(EntityComponentRegistry& reg, GameWorld& world, Entity entity) {
+void process_death(EntityComponentRegistry& reg, World& world, Entity entity) {
     auto* loot = reg.getComponent<Loot>(entity);
     auto* pos = reg.getComponent<Position>(entity);
     if (!loot || !pos)
@@ -30,7 +32,7 @@ void process_death(EntityComponentRegistry& reg, GameWorld& world, Entity entity
     }
 }
 
-bool pickup_worm(EntityComponentRegistry& reg, GameWorld& world, Entity player, int pickup_index) {
+bool pickup_worm(EntityComponentRegistry& reg, World& world, Entity player, int pickup_index) {
     auto* pos = reg.getComponent<Position>(player);
     auto* aperture = reg.getComponent<Aperture>(player);
     Map* map = world.get_map(pos->map_id);
@@ -51,7 +53,7 @@ bool pickup_worm(EntityComponentRegistry& reg, GameWorld& world, Entity player, 
     return true;
 }
 
-bool drop_worm(EntityComponentRegistry& reg, GameWorld& world, Entity player, int drop_index) {
+bool drop_worm(EntityComponentRegistry& reg, World& world, Entity player, int drop_index) {
     auto* pos = reg.getComponent<Position>(player);
     auto* aperture = reg.getComponent<Aperture>(player);
     Map* map = world.get_map(pos->map_id);

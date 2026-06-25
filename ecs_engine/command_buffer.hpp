@@ -6,6 +6,8 @@
 #include <functional>
 #include <vector>
 
+namespace ecse {
+
 class CommandBuffer {
     using Command = std::function<void(EntityComponentRegistry&, EntityManager&)>;
     std::vector<Command> commands_;
@@ -38,3 +40,5 @@ public:
         commands_.clear();
     }
 };
+
+} // namespace ecse

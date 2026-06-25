@@ -1,8 +1,9 @@
-#include <catch2/catch_test_macros.hpp>
-
 #include "ecs.hpp"
 
 #include <atomic>
+#include <catch2/catch_test_macros.hpp>
+
+using namespace ecse;
 
 struct StubSystem : ISystem {
     void update(EntityComponentRegistry&, CommandBuffer&) override {}

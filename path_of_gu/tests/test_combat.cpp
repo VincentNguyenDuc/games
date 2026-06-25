@@ -1,5 +1,3 @@
-#include <catch2/catch_test_macros.hpp>
-
 #include "actions/combat.hpp"
 #include "components/aperture.hpp"
 #include "components/health.hpp"
@@ -11,7 +9,10 @@
 #include "items/gu_worm.hpp"
 #include "systems/effect_system.hpp"
 
+#include <catch2/catch_test_macros.hpp>
 #include <memory>
+
+using namespace ecse;
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
