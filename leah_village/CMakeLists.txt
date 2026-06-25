@@ -5,6 +5,10 @@ find_package(unofficial-sqlite3 CONFIG REQUIRED)
 add_executable(leah_village
     src/main.cpp
     src/game.cpp
+    src/actions.cpp
+    src/spawn.cpp
+    src/input.cpp
+    src/render.cpp
     src/assets.cpp
     src/world/map.cpp
     src/world/world.cpp
