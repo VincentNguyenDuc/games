@@ -13,8 +13,7 @@ enum class BuildingType {
 
 struct Building {
     BuildingType type;
-    int level; // 1-based; increases on upgrade completion
-    int size;  // footprint: size × size tiles
+    int size; // footprint: size × size tiles
     int max_hp;
     int hp;
 };

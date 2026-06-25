@@ -8,12 +8,12 @@
 
 using ecse::Entity;
 
-class GameWorld {
+class World {
     std::unordered_map<MapId, std::unique_ptr<Map>> maps_;
     MapId next_id_ = 0;
 
 public:
-    GameWorld(); // generates the Grotto-Heaven dungeon layout
+    World(); // generates the Grotto-Heaven dungeon layout
 
     Map* get_map(MapId id) const;
     MapId entrance_id() const { return 0; }

@@ -85,7 +85,7 @@ static AIDecision decide(EnemySnapshot ctx) {
     return {ctx.entity, dmg, ess_drain, -1, false};
 }
 
-AiTickSystem::AiTickSystem(GameWorld& gw, Entity p)
+AiTickSystem::AiTickSystem(World& gw, Entity p)
     : game_world(gw)
     , player(p) {
     reads = std::vector<ComponentType>{

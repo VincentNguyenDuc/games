@@ -10,5 +10,5 @@ using ecse::Entity;
 using ecse::EntityComponentRegistry;
 
 ftxui::Element render(
-    EntityComponentRegistry& reg, GameWorld& world, Entity player, const std::string& status_msg
+    EntityComponentRegistry& reg, World& world, Entity player, const std::string& status_msg
 );

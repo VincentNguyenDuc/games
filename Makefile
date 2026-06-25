@@ -37,7 +37,7 @@ build-all:
 	cmake --build --preset $(BUILD_PRESET)
 
 run: build
-	./build/$(BUILD_PRESET)/$(TARGET)
+	./build/$(BUILD_PRESET)/$(TARGET)/$(TARGET)
 
 test:
 	cmake --preset $(BUILD_PRESET)

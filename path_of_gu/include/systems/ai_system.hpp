@@ -11,10 +11,10 @@ using ecse::EntityComponentRegistry;
 using ecse::ISystem;
 
 struct AiTickSystem : ISystem {
-    GameWorld& game_world;
+    World& game_world;
     Entity player;
     std::string output;
 
-    AiTickSystem(GameWorld& gw, Entity p);
+    AiTickSystem(World& gw, Entity p);
     void update(EntityComponentRegistry& reg, CommandBuffer&) override;
 };

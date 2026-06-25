@@ -37,7 +37,7 @@ static GuWormDrop never_drop(const std::string& name) {
 TEST_CASE("process_death drops loot with 100% chance onto the map", "[loot]") {
     EntityComponentRegistry reg;
     EntityManager em;
-    GameWorld world;
+    World world;
 
     Entity enemy = em.createEntity();
     reg.addComponent(enemy, Position{world.entrance_id()});
@@ -53,7 +53,7 @@ TEST_CASE("process_death drops loot with 100% chance onto the map", "[loot]") {
 TEST_CASE("process_death does not drop loot with 0% chance", "[loot]") {
     EntityComponentRegistry reg;
     EntityManager em;
-    GameWorld world;
+    World world;
 
     Entity enemy = em.createEntity();
     reg.addComponent(enemy, Position{world.entrance_id()});
@@ -68,7 +68,7 @@ TEST_CASE("process_death does not drop loot with 0% chance", "[loot]") {
 TEST_CASE("process_death with multiple guaranteed drops adds all", "[loot]") {
     EntityComponentRegistry reg;
     EntityManager em;
-    GameWorld world;
+    World world;
 
     Entity enemy = em.createEntity();
     reg.addComponent(enemy, Position{world.entrance_id()});
@@ -83,7 +83,7 @@ TEST_CASE("process_death with multiple guaranteed drops adds all", "[loot]") {
 TEST_CASE("process_death on entity without Loot component is a no-op", "[loot]") {
     EntityComponentRegistry reg;
     EntityManager em;
-    GameWorld world;
+    World world;
 
     Entity enemy = em.createEntity();
     reg.addComponent(enemy, Position{world.entrance_id()});
@@ -98,7 +98,7 @@ TEST_CASE("process_death on entity without Loot component is a no-op", "[loot]")
 TEST_CASE("pickup_worm moves a worm from map to player aperture", "[loot]") {
     EntityComponentRegistry reg;
     EntityManager em;
-    GameWorld world;
+    World world;
 
     Entity player = em.createEntity();
     reg.addComponent(player, Position{world.entrance_id()});
@@ -117,7 +117,7 @@ TEST_CASE("pickup_worm moves a worm from map to player aperture", "[loot]") {
 TEST_CASE("pickup_worm fails when aperture is full", "[loot]") {
     EntityComponentRegistry reg;
     EntityManager em;
-    GameWorld world;
+    World world;
 
     Entity player = em.createEntity();
     reg.addComponent(player, Position{world.entrance_id()});
@@ -136,7 +136,7 @@ TEST_CASE("pickup_worm fails when aperture is full", "[loot]") {
 TEST_CASE("pickup_worm fails on out-of-range index", "[loot]") {
     EntityComponentRegistry reg;
     EntityManager em;
-    GameWorld world;
+    World world;
 
     Entity player = em.createEntity();
     reg.addComponent(player, Position{world.entrance_id()});
@@ -152,7 +152,7 @@ TEST_CASE("pickup_worm fails on out-of-range index", "[loot]") {
 TEST_CASE("pickup_worm removes correct worm when multiple drops exist", "[loot]") {
     EntityComponentRegistry reg;
     EntityManager em;
-    GameWorld world;
+    World world;
 
     Entity player = em.createEntity();
     reg.addComponent(player, Position{world.entrance_id()});
@@ -176,7 +176,7 @@ TEST_CASE("pickup_worm removes correct worm when multiple drops exist", "[loot]"
 TEST_CASE("drop_worm moves worm from aperture to map", "[loot]") {
     EntityComponentRegistry reg;
     EntityManager em;
-    GameWorld world;
+    World world;
 
     Entity player = em.createEntity();
     reg.addComponent(player, Position{world.entrance_id()});
@@ -193,7 +193,7 @@ TEST_CASE("drop_worm moves worm from aperture to map", "[loot]") {
 TEST_CASE("drop_worm fails on out-of-range slot", "[loot]") {
     EntityComponentRegistry reg;
     EntityManager em;
-    GameWorld world;
+    World world;
 
     Entity player = em.createEntity();
     reg.addComponent(player, Position{world.entrance_id()});
@@ -207,7 +207,7 @@ TEST_CASE("drop_worm fails on out-of-range slot", "[loot]") {
 TEST_CASE("drop_worm on empty aperture fails", "[loot]") {
     EntityComponentRegistry reg;
     EntityManager em;
-    GameWorld world;
+    World world;
 
     Entity player = em.createEntity();
     reg.addComponent(player, Position{world.entrance_id()});
@@ -220,7 +220,7 @@ TEST_CASE("drop_worm on empty aperture fails", "[loot]") {
 TEST_CASE("dropped worm can be picked back up", "[loot]") {
     EntityComponentRegistry reg;
     EntityManager em;
-    GameWorld world;
+    World world;
 
     Entity player = em.createEntity();
     reg.addComponent(player, Position{world.entrance_id()});
