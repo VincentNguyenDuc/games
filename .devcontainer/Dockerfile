@@ -21,6 +21,17 @@ RUN apt-get update \
         unzip \
         pkg-config \
         linux-perf \
+        xvfb \
+        x11vnc \
+        novnc \
+        websockify \
+        openbox \
+        xdotool \
+        libxinerama-dev \
+        libxcursor-dev \
+        xorg-dev \
+        libglu1-mesa-dev \
+        libgl1-mesa-dri \
     && rm -rf /var/lib/apt/lists/*
 
 RUN git clone --depth 1 https://github.com/microsoft/vcpkg /opt/vcpkg \
@@ -33,5 +44,8 @@ WORKDIR /workspace
 
 RUN curl -fsSL https://starship.rs/install.sh | sh -s -- -y \
    && echo 'eval "$(starship init bash)"' >> /etc/bash.bashrc
+
+COPY start-display.sh /usr/local/bin/start-display
+RUN chmod +x /usr/local/bin/start-display
 
 CMD ["bash"]
