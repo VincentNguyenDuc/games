@@ -36,8 +36,9 @@ void Map::place_entity(int x, int y, ecse::Entity e) {
 void Map::remove_entity_at(int x, int y) {
     auto it = entity_at.find(cell_key(x, y));
     if (it != entity_at.end()) {
-        remove_entity(it->second);
+        ecse::Entity e = it->second;
         entity_at.erase(it);
+        remove_entity(e);
     }
 }
 

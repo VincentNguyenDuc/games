@@ -1,4 +1,5 @@
-find_package(ftxui CONFIG REQUIRED)
+find_package(raylib CONFIG REQUIRED)
+find_package(glfw3 CONFIG REQUIRED)
 find_package(unofficial-sqlite3 CONFIG REQUIRED)
 
 add_executable(leah_village
@@ -21,9 +22,8 @@ target_link_libraries(leah_village PRIVATE
     ecs_engine
     fmt::fmt
     spdlog::spdlog
-    ftxui::screen
-    ftxui::dom
-    ftxui::component
+    raylib
+    glfw
     unofficial::sqlite3::sqlite3
 )
 

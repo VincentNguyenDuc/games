@@ -26,6 +26,15 @@
             }
         }
     },
+    "postStartCommand": "start-display",
+    "forwardPorts": [6080],
+    "portsAttributes": {
+        "6080": { "label": "noVNC display", "onAutoForward": "openBrowser" }
+    },
+    "remoteEnv": {
+        "DISPLAY": ":99",
+        "LIBGL_ALWAYS_SOFTWARE": "1"
+    },
     "remoteUser": "root",
     "mounts": [
         "source=${localEnv:HOME}/.ssh,target=/root/.ssh,type=bind,consistency=cached",

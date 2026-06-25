@@ -2,11 +2,9 @@
     "version": 3,
     "configurePresets": [
         {
-            "name": "release",
-            "displayName": "Release",
-            "binaryDir": "${sourceDir}/build/release",
+            "name": "base",
+            "hidden": true,
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release",
                 "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
             }
@@ -14,36 +12,100 @@
         {
             "name": "debug",
             "displayName": "Debug",
+            "inherits": "base",
             "binaryDir": "${sourceDir}/build/debug",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug",
-                "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "release",
+            "displayName": "Release",
+            "inherits": "base",
+            "binaryDir": "${sourceDir}/build/release",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
             }
         },
         {
             "name": "profile",
             "displayName": "Profile (RelWithDebInfo)",
+            "inherits": "base",
             "binaryDir": "${sourceDir}/build/profile",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-                "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
             }
         }
     ],
     "buildPresets": [
         {
-            "name": "release",
-            "configurePreset": "release"
-        },
-        {
             "name": "debug",
+            "displayName": "All (Debug)",
             "configurePreset": "debug"
         },
         {
+            "name": "release",
+            "displayName": "All (Release)",
+            "configurePreset": "release"
+        },
+        {
             "name": "profile",
+            "displayName": "All (Profile)",
             "configurePreset": "profile"
+        },
+        {
+            "name": "leah-village-debug",
+            "displayName": "leah_village (Debug)",
+            "configurePreset": "debug",
+            "targets": ["leah_village"]
+        },
+        {
+            "name": "leah-village-release",
+            "displayName": "leah_village (Release)",
+            "configurePreset": "release",
+            "targets": ["leah_village"]
+        },
+        {
+            "name": "leah-village-profile",
+            "displayName": "leah_village (Profile)",
+            "configurePreset": "profile",
+            "targets": ["leah_village"]
+        },
+        {
+            "name": "tic-tac-toe-debug",
+            "displayName": "tic_tac_toe (Debug)",
+            "configurePreset": "debug",
+            "targets": ["tic_tac_toe"]
+        },
+        {
+            "name": "tic-tac-toe-release",
+            "displayName": "tic_tac_toe (Release)",
+            "configurePreset": "release",
+            "targets": ["tic_tac_toe"]
+        },
+        {
+            "name": "tic-tac-toe-profile",
+            "displayName": "tic_tac_toe (Profile)",
+            "configurePreset": "profile",
+            "targets": ["tic_tac_toe"]
+        },
+        {
+            "name": "path-of-gu-debug",
+            "displayName": "path_of_gu (Debug)",
+            "configurePreset": "debug",
+            "targets": ["path_of_gu"]
+        },
+        {
+            "name": "path-of-gu-release",
+            "displayName": "path_of_gu (Release)",
+            "configurePreset": "release",
+            "targets": ["path_of_gu"]
+        },
+        {
+            "name": "path-of-gu-profile",
+            "displayName": "path_of_gu (Profile)",
+            "configurePreset": "profile",
+            "targets": ["path_of_gu"]
         }
     ]
 }
