@@ -28,13 +28,24 @@
 
 #include <chrono>
 #include <deque>
+#include <memory>
 #include <string>
 
+// Forward declarations — full types are only needed in the .cpp files
+class Renderer;
+class Actions;
+class InputHandler;
+
 class Game {
+    friend class Renderer;
+    friend class Actions;
+    friend class InputHandler;
+
 public:
     inline static const std::string DB_PATH = "leah_village/game.db";
 
     Game();
+    ~Game();
     void run();
 
     // --- Persistence interface ---
@@ -63,14 +74,14 @@ private:
     static constexpr int TILE_H = 34;
     static constexpr int VIEWPORT_COLS = 20;
     static constexpr int VIEWPORT_ROWS = 12;
-    static constexpr int MAP_PX_W = TILE_W * VIEWPORT_COLS; // 800
-    static constexpr int MAP_PX_H = TILE_H * VIEWPORT_ROWS; // 408
+    static constexpr int MAP_PX_W = TILE_W * VIEWPORT_COLS;
+    static constexpr int MAP_PX_H = TILE_H * VIEWPORT_ROWS;
     static constexpr int HUD_H = 60;
     static constexpr int MAP_Y = HUD_H;
     static constexpr int PANEL_X = MAP_PX_W;
-    static constexpr int PANEL_W = WINDOW_W - MAP_PX_W;  // 480
-    static constexpr int STATUS_Y = MAP_Y + MAP_PX_H;    // 468
-    static constexpr int STATUS_H = WINDOW_H - STATUS_Y; // 252
+    static constexpr int PANEL_W = WINDOW_W - MAP_PX_W;
+    static constexpr int STATUS_Y = MAP_Y + MAP_PX_H;
+    static constexpr int STATUS_H = WINDOW_H - STATUS_Y;
 
     // ── Core state ────────────────────────────────────────────────────────────
     World world_;
@@ -95,50 +106,17 @@ private:
     std::deque<std::string> messages_;
     static constexpr int MAX_MSG = 6;
 
-    // ── Initialisation ────────────────────────────────────────────────────────
+    // ── Subsystems ────────────────────────────────────────────────────────────
+    std::unique_ptr<Renderer> renderer_;
+    std::unique_ptr<Actions> actions_;
+    std::unique_ptr<InputHandler> input_;
+
+    // ── Internal methods ──────────────────────────────────────────────────────
     void setup_ecs();
-    void spawn_initial_buildings();
-    ecse::Entity spawn_building(MapId map_id, int x, int y, BuildingType type, int level = 1);
-    ecse::Entity spawn_obstacle(
-        MapId map_id, int x, int y, int gold_reward, int elixir_reward, float clear_time_s
-    );
-
-    // ── Game tick ─────────────────────────────────────────────────────────────
     void tick(float dt);
-
-    // ── Player actions ────────────────────────────────────────────────────────
-    void try_move(int dx, int dy);
-    void try_interact();
-    void try_upgrade();
-    void try_clear();
-    void enter_build_mode();
-    void confirm_build();
-    void cancel_build();
-
-    void do_collect(ecse::Entity e);
-    void start_construction(ecse::Entity e, ConstructionKind kind, float time_s);
-    void finish_construction(ecse::Entity e, bool is_upgrade);
-    void do_clear_obstacle(ecse::Entity e);
-    void finish_obstacle(ecse::Entity e);
-    void on_level_up(int new_level);
-
-    // ── Rendering (raylib — draw directly, return void) ───────────────────────
-    void render();
-    void render_hud();
-    void render_map();
-    void render_cell(int x, int y, int px, int py);
-    void render_panel();
-    void render_statusbar();
-
-    // ── Input (polls raylib key state) ────────────────────────────────────────
-    void handle_input();
-
-    // ── Persistence ───────────────────────────────────────────────────────────
     void save_game();
     void load_game();
-
-    // ── Utility ───────────────────────────────────────────────────────────────
     void push_msg(std::string msg);
-    int free_builders() const;
     static std::string fmt_time(float seconds);
+    int free_builders() const;
 };
